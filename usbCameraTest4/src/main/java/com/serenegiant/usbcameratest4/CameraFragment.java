@@ -26,11 +26,11 @@ package com.serenegiant.usbcameratest4;
 import java.util.List;
 
 import android.app.Activity;
-import android.app.Fragment;
 import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.SurfaceView;
@@ -42,8 +42,8 @@ import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ImageButton;
 import android.widget.ToggleButton;
 
-import com.serenegiant.common.BaseFragment;
-import com.serenegiant.encoder.MediaMuxerWrapper;
+import androidx.fragment.app.Fragment;
+
 import com.serenegiant.service.UVCService;
 import com.serenegiant.serviceclient.CameraClient;
 import com.serenegiant.serviceclient.ICameraClient;
@@ -54,9 +54,9 @@ import com.serenegiant.usb.DeviceFilter;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
-import com.serenegiant.widget.CameraViewInterface;
+import com.serenegiant.utils.HandlerThreadHandler;
 
-public class CameraFragment extends BaseFragment {
+public class CameraFragment extends Fragment {
 
 	private static final boolean DEBUG = true;
 	private static final String TAG = "CameraFragment";
@@ -70,9 +70,11 @@ public class CameraFragment extends BaseFragment {
 	private ToggleButton mPreviewButton;
 	private ImageButton mRecordButton;
 	private ImageButton mStillCaptureButton;
-	private CameraViewInterface mCameraView;
+	private SurfaceView mCameraView;
 	private SurfaceView mCameraViewSub;
 	private boolean isSubView;
+
+	private Handler handler;
 
 	public CameraFragment() {
 		if (DEBUG) Log.v(TAG, "Constructor:");
@@ -95,6 +97,7 @@ public class CameraFragment extends BaseFragment {
 			final List<DeviceFilter> filters = DeviceFilter.getDeviceFilters(getActivity(), R.xml.device_filter);
 			mUSBMonitor.setDeviceFilter(filters);
 		}
+		handler = HandlerThreadHandler.createHandler("CameraFragmentHandler");
 	}
 
 	@Override
@@ -114,8 +117,8 @@ public class CameraFragment extends BaseFragment {
 		mStillCaptureButton = (ImageButton)rootView.findViewById(R.id.still_button);
 		mStillCaptureButton.setOnClickListener(mOnClickListener);
 		mStillCaptureButton.setEnabled(false);
-		mCameraView = (CameraViewInterface)rootView.findViewById(R.id.camera_view);
-		mCameraView.setAspectRatio(DEFAULT_WIDTH / (float)DEFAULT_HEIGHT);
+		mCameraView = rootView.findViewById(R.id.camera_view);
+
 		mCameraViewSub = (SurfaceView)rootView.findViewById(R.id.camera_view_sub);
 		mCameraViewSub.setOnClickListener(mOnClickListener);
 		return rootView;
@@ -132,7 +135,7 @@ public class CameraFragment extends BaseFragment {
 	public void onPause() {
 		if (DEBUG) Log.v(TAG, "onPause:");
 		if (mCameraClient != null) {
-			mCameraClient.removeSurface(mCameraView.getSurface());
+			mCameraClient.removeSurface(mCameraView.getHolder().getSurface());
 			mCameraClient.removeSurface(mCameraViewSub.getHolder().getSurface());
 			isSubView = false;
 		}
@@ -154,6 +157,7 @@ public class CameraFragment extends BaseFragment {
 			mCameraClient.release();
 			mCameraClient = null;
 		}
+		handler.getLooper().quitSafely();
 		super.onDestroy();
 	}
 
@@ -171,7 +175,7 @@ public class CameraFragment extends BaseFragment {
 		@Override
 		public void onAttach(final UsbDevice device) {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onAttach:");
-			if (!updateCameraDialog() && (mCameraView.hasSurface())) {
+			if (!updateCameraDialog() && (mCameraView.getHolder().getSurface() != null)) {
 				tryOpenUVCCamera(true);
 			}
 		}
@@ -189,7 +193,7 @@ public class CameraFragment extends BaseFragment {
 		@Override
 		public void onDettach(final UsbDevice device) {
 			if (DEBUG) Log.v(TAG, "OnDeviceConnectListener#onDettach:");
-			queueEvent(new Runnable() {
+			handler.postDelayed(new Runnable() {
 				@Override
 				public void run() {
 					if (mCameraClient != null) {
@@ -212,10 +216,10 @@ public class CameraFragment extends BaseFragment {
 
 	private boolean updateCameraDialog() {
 		final Fragment fragment = getFragmentManager().findFragmentByTag("CameraDialog");
-		if (fragment instanceof CameraDialog) {
-			((CameraDialog)fragment).updateDevices();
-			return true;
-		}
+//		if (fragment instanceof CameraDialog) {
+//			((CameraDialog)fragment).updateDevices();
+//			return true;
+//		}
 		return false;
 	}
 
@@ -242,7 +246,7 @@ public class CameraFragment extends BaseFragment {
 		@Override
 		public void onConnect() {
 			if (DEBUG) Log.v(TAG, "onConnect:");
-			mCameraClient.addSurface(mCameraView.getSurface(), false);
+			mCameraClient.addSurface(mCameraView.getHolder().getSurface(), false);
 			mCameraClient.addSurface(mCameraViewSub.getHolder().getSurface(), false);
 			isSubView = true;
 			enableButtons(true);
@@ -299,41 +303,11 @@ public class CameraFragment extends BaseFragment {
 				break;
 			case R.id.record_button:
 				if (DEBUG) Log.v(TAG, "onClick:record");
-				if (checkPermissionWriteExternalStorage() && checkPermissionAudio()) {
-					queueEvent(new Runnable() {
-						@Override
-						public void run() {
-							if (mCameraClient.isRecording()) {
-								mCameraClient.stopRecording();
-								runOnUiThread(new Runnable() {
-									@Override
-									public void run() {
-										mRecordButton.setColorFilter(0);
-									}
-								}, 0);
-							} else {
-								mCameraClient.startRecording();
-								runOnUiThread(new Runnable() {
-									@Override
-									public void run() {
-										mRecordButton.setColorFilter(0x7fff0000);
-									}
-								}, 0);
-							}
-						}
-					}, 0);
-				}
+
 				break;
 			case R.id.still_button:
 				if (DEBUG) Log.v(TAG, "onClick:still capture");
-				if (mCameraClient != null && checkPermissionWriteExternalStorage()) {
-					queueEvent(new Runnable() {
-						@Override
-						public void run() {
-							mCameraClient.captureStill(MediaMuxerWrapper.getCaptureFile(Environment.DIRECTORY_DCIM, ".jpg").toString());
-						}
-					}, 0);
-				}
+
 
 				break;
 			}
@@ -345,10 +319,10 @@ public class CameraFragment extends BaseFragment {
 		public void onCheckedChanged(final CompoundButton buttonView, final boolean isChecked) {
 			if (DEBUG) Log.v(TAG, "onCheckedChanged:" + isChecked);
 			if (isChecked) {
-				mCameraClient.addSurface(mCameraView.getSurface(), false);
+				mCameraClient.addSurface(mCameraView.getHolder().getSurface(), false);
 //				mCameraClient.addSurface(mCameraViewSub.getHolder().getSurface(), false);
 			} else {
-				mCameraClient.removeSurface(mCameraView.getSurface());
+				mCameraClient.removeSurface(mCameraView.getHolder().getSurface());
 //				mCameraClient.removeSurface(mCameraViewSub.getHolder().getSurface());
 			}
 		}

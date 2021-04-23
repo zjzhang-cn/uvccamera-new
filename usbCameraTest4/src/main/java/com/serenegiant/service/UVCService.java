@@ -26,22 +26,24 @@ package com.serenegiant.service;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.Service;
 import android.content.Intent;
 import android.hardware.usb.UsbDevice;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.Surface;
 
-import com.serenegiant.common.BaseService;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
 import com.serenegiant.usbcameratest4.MainActivity;
 import com.serenegiant.usbcameratest4.R;
+import com.serenegiant.utils.HandlerThreadHandler;
 
-public class UVCService extends BaseService {
+public class UVCService extends Service {
 	private static final boolean DEBUG = true;
 	private static final String TAG = "UVCService";
 
@@ -54,6 +56,7 @@ public class UVCService extends BaseService {
 		if (DEBUG) Log.d(TAG, "Constructor:");
 	}
 
+	private Handler handler;
 	@Override
 	public void onCreate() {
 		super.onCreate();
@@ -64,6 +67,7 @@ public class UVCService extends BaseService {
 		}
 		mNotificationManager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
 		showNotification(getString(R.string.app_name));
+		handler = HandlerThreadHandler.createHandler("UVCService");
 	}
 
 	@Override
@@ -78,6 +82,7 @@ public class UVCService extends BaseService {
 			mNotificationManager.cancel(NOTIFICATION);
 			mNotificationManager = null;
 		}
+		handler.getLooper().quitSafely();
 		super.onDestroy();
 	}
 
@@ -144,7 +149,7 @@ public class UVCService extends BaseService {
 		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
 			if (DEBUG) Log.d(TAG, "OnDeviceConnectListener#onConnect:");
 
-			queueEvent(new Runnable() {
+			handler.postDelayed(new Runnable() {
 				@Override
 				public void run() {
 					final int key = device.hashCode();
@@ -166,7 +171,7 @@ public class UVCService extends BaseService {
 		@Override
 		public void onDisconnect(final UsbDevice device, final UsbControlBlock ctrlBlock) {
 			if (DEBUG) Log.d(TAG, "OnDeviceConnectListener#onDisconnect:");
-			queueEvent(new Runnable() {
+			handler.postDelayed(new Runnable() {
 				@Override
 				public void run() {
 					removeService(device);
@@ -384,25 +389,15 @@ public class UVCService extends BaseService {
 		@Override
 		public boolean isRecording(final int serviceId) throws RemoteException {
 			final CameraServer server = getCameraServer(serviceId);
-			return server != null && server.isRecording();
+			return false;
 		}
 
 		@Override
 		public void startRecording(final int serviceId) throws RemoteException {
-			if (DEBUG) Log.d(TAG, "mBasicBinder#startRecording:");
-			final CameraServer server = getCameraServer(serviceId);
-			if ((server != null) && !server.isRecording()) {
-				server.startRecording();
-			}
 		}
 
 		@Override
 		public void stopRecording(final int serviceId) throws RemoteException {
-			if (DEBUG) Log.d(TAG, "mBasicBinder#stopRecording:");
-			final CameraServer server = getCameraServer(serviceId);
-			if ((server != null) && server.isRecording()) {
-				server.stopRecording();
-			}
 		}
 
 		@Override

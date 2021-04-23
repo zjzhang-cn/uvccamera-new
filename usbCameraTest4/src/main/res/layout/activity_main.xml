@@ -21,27 +21,26 @@
   ~  may have a different license, see the respective files.
   -->
 
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:background="#000000"
     tools:context="com.serenegiant.usbwebcamerapro.MainActivity"
     tools:ignore="MergeRootFrame" >
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:padding="16dp"
+        android:textSize="16sp"
+        android:text="0"
+        android:id="@+id/recv_frames"
+        android:layout_height="wrap_content"></TextView>
     <FrameLayout
         android:id="@+id/container"
         android:layout_width="match_parent"
         android:layout_height="match_parent" >
     </FrameLayout>
 
-    <FrameLayout
-        android:id="@+id/ad_parent"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|center_horizontal"
-        android:layout_marginTop="@dimen/half_padding"
-        android:gravity="top" >
-    </FrameLayout>
-
-</FrameLayout>
+</LinearLayout>

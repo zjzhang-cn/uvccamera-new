@@ -23,17 +23,23 @@
 
 package com.serenegiant.usbcameratest4;
 
-import android.app.Fragment;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Window;
+import android.widget.TextView;
 
-import com.serenegiant.common.BaseActivity;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 
-public class MainActivity extends BaseActivity {
+
+public class MainActivity extends AppCompatActivity {
 	private static final boolean DEBUG = false;
 	private static final String TAG = "MainActivity";
+
+	public static MutableLiveData<Integer> recvFrames = new MutableLiveData<>();
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
@@ -43,9 +49,17 @@ public class MainActivity extends BaseActivity {
 		if (savedInstanceState == null) {
 			if (DEBUG) Log.i(TAG, "onCreate:new");
 			final Fragment fragment = new CameraFragment();
-			getFragmentManager().beginTransaction()
+			getSupportFragmentManager().beginTransaction()
 					.add(R.id.container, fragment).commit();
 		}
+
+		TextView recvFramesTxt = findViewById(R.id.recv_frames);
+		recvFrames.observe(this, new Observer<Integer>() {
+			@Override
+			public void onChanged(Integer integer) {
+				recvFramesTxt.setText(String.valueOf(integer));
+			}
+		});
 	}
 
 	@Override
