@@ -58,5 +58,5 @@ dependencies {
 		exclude module: 'support-v4'
 	}
 	implementation project(':libuvccamera')
-	implementation project(':usbCameraCommon')
+//	implementation project(':usbCameraCommon')
 }
