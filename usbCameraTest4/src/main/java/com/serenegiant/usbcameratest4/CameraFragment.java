@@ -40,6 +40,7 @@ import android.view.ViewGroup;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.ToggleButton;
 
 import androidx.fragment.app.Fragment;
@@ -97,6 +98,7 @@ public class CameraFragment extends Fragment {
 			final List<DeviceFilter> filters = DeviceFilter.getDeviceFilters(getActivity(), R.xml.device_filter);
 			mUSBMonitor.setDeviceFilter(filters);
 		}
+
 		handler = HandlerThreadHandler.createHandler("CameraFragmentHandler");
 	}
 
@@ -232,6 +234,7 @@ public class CameraFragment extends Fragment {
 		if (DEBUG) Log.v(TAG, "openUVCCamera:index=" + index);
 		if (!mUSBMonitor.isRegistered()) return;
 		final List<UsbDevice> list = mUSBMonitor.getDeviceList();
+
 		if (list.size() > index) {
 			enableButtons(false);
 			if (mCameraClient == null)

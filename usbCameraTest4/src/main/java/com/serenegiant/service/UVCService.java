@@ -148,7 +148,6 @@ public class UVCService extends Service {
 		@Override
 		public void onConnect(final UsbDevice device, final UsbControlBlock ctrlBlock, final boolean createNew) {
 			if (DEBUG) Log.d(TAG, "OnDeviceConnectListener#onConnect:");
-
 			handler.postDelayed(new Runnable() {
 				@Override
 				public void run() {

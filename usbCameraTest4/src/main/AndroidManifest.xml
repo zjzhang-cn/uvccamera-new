@@ -56,8 +56,7 @@
 				android:resource="@xml/device_filter" />
             </activity>
         <service
-            android:name="com.serenegiant.service.UVCService"
-			android:process=":uvcservice" >
+            android:name="com.serenegiant.service.UVCService" >
             <intent-filter>
                 <action android:name="com.serenegiant.service.IUVCService" />
                 <action android:name="com.serenegiant.service.IUVCSlaveService" />

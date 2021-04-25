@@ -337,12 +337,13 @@ public final class CameraServer extends Handler {
 				} catch (final IllegalArgumentException e) {
 					try {
 						// fallback to YUV mode
-						mUVCCamera.setPreviewSize(width, height, UVCCamera.DEFAULT_PREVIEW_MODE);
+						mUVCCamera.setPreviewSize(width, height,UVCCamera.DEFAULT_PREVIEW_MODE);
 					} catch (final IllegalArgumentException e1) {
 						mUVCCamera.destroy();
 						mUVCCamera = null;
 					}
 				}
+
 				if (mUVCCamera == null) return;
 				mUVCCamera.setFrameCallback(new IFrameCallback() {
 					int frames = 0;

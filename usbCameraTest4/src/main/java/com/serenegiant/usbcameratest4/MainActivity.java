@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
 	private static final boolean DEBUG = false;
 	private static final String TAG = "MainActivity";
 
-	public static MutableLiveData<Integer> recvFrames = new MutableLiveData<>();
+	public static final MutableLiveData<Integer> recvFrames = new MutableLiveData<>();
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
