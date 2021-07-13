@@ -24,17 +24,21 @@
 package com.serenegiant.service;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.hardware.usb.UsbDevice;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.Surface;
+
+import androidx.core.app.NotificationCompat;
 
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.USBMonitor.OnDeviceConnectListener;
@@ -52,6 +56,8 @@ public class UVCService extends Service {
 	private USBMonitor mUSBMonitor;
 	private NotificationManager mNotificationManager;
 
+	private static final String CHANNEL_ID="1";
+
 	public UVCService() {
 		if (DEBUG) Log.d(TAG, "Constructor:");
 	}
@@ -66,7 +72,7 @@ public class UVCService extends Service {
 			mUSBMonitor.register();
 		}
 		mNotificationManager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
-		showNotification(getString(R.string.app_name));
+		showNotification(getString(R.string.app_name),CHANNEL_ID);
 		handler = HandlerThreadHandler.createHandler("UVCService");
 	}
 
@@ -122,10 +128,12 @@ public class UVCService extends Service {
 	 * and set this service as foreground service to keep alive as possible as this can.
 	 * @param text
 	 */
-	private void showNotification(final CharSequence text) {
+	private void showNotification(final CharSequence text, String channelId) {
 		if (DEBUG) Log.v(TAG, "showNotification:" + text);
         // Set the info for the views that show in the notification panel.
-        final Notification notification = new Notification.Builder(this)
+
+		createNotificationChannel(channelId);
+        final Notification notification = new NotificationCompat.Builder(this, channelId)
 			.setSmallIcon(R.drawable.ic_launcher)  // the status icon
 			.setTicker(text)  // the status text
 			.setWhen(System.currentTimeMillis())  // the time stamp
@@ -138,6 +146,25 @@ public class UVCService extends Service {
         // Send the notification.
 		mNotificationManager.notify(NOTIFICATION, notification);
     }
+
+	private NotificationChannel createNotificationChannel(String channelId) {
+		//大于8.0
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			NotificationChannel channel = new NotificationChannel(channelId,
+					this.getApplicationContext().getPackageName(), NotificationManager.IMPORTANCE_HIGH);
+			channel.enableLights(true); //闪光
+			channel.setLockscreenVisibility(Notification.VISIBILITY_SECRET); //锁屏不显示通知
+			channel.enableVibration(false); //是否允许震动
+			channel.setBypassDnd(true); //设置可以绕过，请勿打扰模式
+			channel.setVibrationPattern(new long[]{100, 100, 200});  //震动的模式，震3次，第一次100，第二次100，第三次200毫秒
+
+			//通知管理者创建的渠道
+			mNotificationManager.createNotificationChannel(channel);
+			return channel;
+		} else {
+			return null;
+		}
+	}
 
 	private final OnDeviceConnectListener mOnDeviceConnectListener = new OnDeviceConnectListener() {
 		@Override
