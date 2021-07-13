@@ -41,7 +41,7 @@
 #include "UVCPreview.h"
 #include "libuvc_internal.h"
 
-#define	LOCAL_DEBUG 0
+#define	LOCAL_DEBUG 1
 #define MAX_FRAME 4
 #define PREVIEW_PIXEL_BYTES 4	// RGBA/RGBX
 #define FRAME_POOL_SZ MAX_FRAME + 2
@@ -75,7 +75,7 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 //
 	pthread_cond_init(&capture_sync, NULL);
 	pthread_mutex_init(&capture_mutex, NULL);
-//	
+//
 	pthread_mutex_init(&pool_mutex, NULL);
 	EXIT();
 }
@@ -169,7 +169,7 @@ inline const bool UVCPreview::isRunning() const {return mIsRunning; }
 
 int UVCPreview::setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth) {
 	ENTER();
-	
+
 	int result = 0;
 	if ((requestWidth != width) || (requestHeight != height) || (requestMode != mode)) {
 		requestWidth = width;
@@ -184,7 +184,7 @@ int UVCPreview::setPreviewSize(int width, int height, int min_fps, int max_fps, 
 			!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
 			requestWidth, requestHeight, requestMinFps, requestMaxFps);
 	}
-	
+
 	RETURN(result, int);
 }
 
@@ -207,7 +207,7 @@ int UVCPreview::setPreviewDisplay(ANativeWindow *preview_window) {
 }
 
 int UVCPreview::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format) {
-	
+
 	ENTER();
 	pthread_mutex_lock(&capture_mutex);
 	{
@@ -333,7 +333,7 @@ int UVCPreview::startPreview() {
 		mIsRunning = true;
 		pthread_mutex_lock(&preview_mutex);
 		{
-			//if (LIKELY(mPreviewWindow))
+			// if (LIKELY(mPreviewWindow))
 			{
 				result = pthread_create(&preview_thread, NULL, preview_thread_func, (void *)this);
 			}
@@ -357,29 +357,39 @@ int UVCPreview::stopPreview() {
 	bool b = isRunning();
 	if (LIKELY(b)) {
 		mIsRunning = false;
+        LOGW("UVCPreview::stopPreview mIsRunning = false");
 		pthread_cond_signal(&preview_sync);
+        LOGW("UVCPreview::stopPreview pthread_cond_signal(&preview_sync);");
 		pthread_cond_signal(&capture_sync);
+        LOGW("UVCPreview::stopPreview pthread_cond_signal(&capture_sync);");
 		if (pthread_join(capture_thread, NULL) != EXIT_SUCCESS) {
 			LOGW("UVCPreview::terminate capture thread: pthread_join failed");
 		}
+        LOGW("UVCPreview::stopPreview capture_thread done;");
 		if (pthread_join(preview_thread, NULL) != EXIT_SUCCESS) {
 			LOGW("UVCPreview::terminate preview thread: pthread_join failed");
 		}
+        LOGW("UVCPreview::stopPreview preview_thread done;");
 		clearDisplay();
+        LOGW("UVCPreview::stopPreview clearDisplay;");
 	}
 	clearPreviewFrame();
+        LOGW("UVCPreview::stopPreview clearPreviewFrame;");
 	clearCaptureFrame();
+        LOGW("UVCPreview::stopPreview clearCaptureFrame;");
 	pthread_mutex_lock(&preview_mutex);
 	if (mPreviewWindow) {
 		ANativeWindow_release(mPreviewWindow);
 		mPreviewWindow = NULL;
 	}
+        LOGW("UVCPreview::stopPreview ANativeWindow_release mPreviewWindow;");
 	pthread_mutex_unlock(&preview_mutex);
 	pthread_mutex_lock(&capture_mutex);
 	if (mCaptureWindow) {
 		ANativeWindow_release(mCaptureWindow);
 		mCaptureWindow = NULL;
 	}
+        LOGW("UVCPreview::stopPreview ANativeWindow_release(mCaptureWindow);");
 	pthread_mutex_unlock(&capture_mutex);
 	RETURN(0, int);
 }
@@ -512,6 +522,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 
 void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 	ENTER();
+	LOGW("enter do preview");
 
 	uvc_frame_t *frame = NULL;
 	uvc_frame_t *frame_mjpeg = NULL;
@@ -529,6 +540,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			// MJPEG mode
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame_mjpeg = waitPreviewFrame();
+				LOGI("Stream got mjpeg..");
 				if (LIKELY(frame_mjpeg)) {
 					frame = get_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
 					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
@@ -562,7 +574,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 	} else {
 		uvc_perror(result, "failed start_streaming");
 	}
-
+    LOGW("leave do preview");
 	EXIT();
 }
 
@@ -775,6 +787,7 @@ void *UVCPreview::capture_thread_func(void *vptr_args) {
 void UVCPreview::do_capture(JNIEnv *env) {
 
 	ENTER();
+	LOGW("ENTER do_capture!");
 
 	clearCaptureFrame();
 	callbackPixelFormatChanged();
@@ -787,6 +800,7 @@ void UVCPreview::do_capture(JNIEnv *env) {
 		}
 		pthread_cond_broadcast(&capture_sync);
 	}	// end of for (; isRunning() ;)
+	LOGW("leave do_capture!");
 	EXIT();
 }
 
