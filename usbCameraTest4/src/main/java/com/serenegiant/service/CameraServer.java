@@ -333,11 +333,11 @@ public final class CameraServer extends Handler {
 			synchronized (mSync) {
 				if (mUVCCamera == null) return;
 				try {
-					mUVCCamera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_MJPEG);
+					mUVCCamera.setPreviewSize(width, height, 1,30,UVCCamera.FRAME_FORMAT_MJPEG,0);
 				} catch (final IllegalArgumentException e) {
 					try {
 						// fallback to YUV mode
-						mUVCCamera.setPreviewSize(width, height,UVCCamera.DEFAULT_PREVIEW_MODE);
+						mUVCCamera.setPreviewSize(width, height,1,30,UVCCamera.DEFAULT_PREVIEW_MODE,0);
 					} catch (final IllegalArgumentException e1) {
 						mUVCCamera.destroy();
 						mUVCCamera = null;

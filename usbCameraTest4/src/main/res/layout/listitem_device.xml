@@ -21,6 +21,11 @@
   ~  Files in the libjpeg-turbo, libusb, libuvc, rapidjson folder
   ~  may have a different license, see the respective files.
   -->
-<resources>
-    <string name="app_name">USBカメラテスト4</string>
-</resources>
+<CheckedTextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/name_text"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+	android:minHeight="@dimen/list_height_min"
+    android:textSize="@dimen/list_font_size" >
+
+</CheckedTextView>

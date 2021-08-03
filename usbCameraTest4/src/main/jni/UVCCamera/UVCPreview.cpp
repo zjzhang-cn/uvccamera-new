@@ -70,6 +70,8 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	callbackPixelBytes(2) {
 
 	ENTER();
+
+	LOGW("%p create with requestBandwidth:%d",this,requestBandwidth);
 	pthread_cond_init(&preview_sync, NULL);
 	pthread_mutex_init(&preview_mutex, NULL);
 //
@@ -170,14 +172,15 @@ inline const bool UVCPreview::isRunning() const {return mIsRunning; }
 int UVCPreview::setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth) {
 	ENTER();
 
+    LOGE("setPreviewSize(%d,%d,%d,%d,%d,%.2f)",width,height,min_fps,max_fps,mode,bandwidth);
 	int result = 0;
+    requestBandwidth = bandwidth;
+    requestMinFps = min_fps;
+    requestMaxFps = max_fps;
 	if ((requestWidth != width) || (requestHeight != height) || (requestMode != mode)) {
 		requestWidth = width;
 		requestHeight = height;
-		requestMinFps = min_fps;
-		requestMaxFps = max_fps;
 		requestMode = mode;
-		requestBandwidth = bandwidth;
 
 		uvc_stream_ctrl_t ctrl;
 		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
@@ -398,34 +401,42 @@ int UVCPreview::stopPreview() {
 //
 //**********************************************************************
 void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args) {
+
+    LOGD("uvc_preview_frame_callback");
 	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
-	if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data || !frame->data_bytes) return;
+	if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data || !frame->data_bytes) {
+        // LOGD("uvc_preview_frame_callback data invalid.isRunning = %d, frame:%d, fmt:%d,data:%d,data_bytes:%d",preview->isRunning(),(int)frame,frame->frame_format,(int)frame->data,frame->data_bytes);
+	    return;
+	}
 	if (UNLIKELY(
 		((frame->frame_format != UVC_FRAME_FORMAT_MJPEG) && (frame->actual_bytes < preview->frameBytes))
 		|| (frame->width != preview->frameWidth) || (frame->height != preview->frameHeight) )) {
 
-#if LOCAL_DEBUG
+//#if LOCAL_DEBUG
 		LOGD("broken frame!:format=%d,actual_bytes=%d/%d(%d,%d/%d,%d)",
 			frame->frame_format, frame->actual_bytes, preview->frameBytes,
 			frame->width, frame->height, preview->frameWidth, preview->frameHeight);
-#endif
+//#endif
 		return;
 	}
 	if (LIKELY(preview->isRunning())) {
 		uvc_frame_t *copy = preview->get_frame(frame->data_bytes);
 		if (UNLIKELY(!copy)) {
-#if LOCAL_DEBUG
+//#if LOCAL_DEBUG
 			LOGE("uvc_callback:unable to allocate duplicate frame!");
-#endif
+//#endif
 			return;
 		}
 		uvc_error_t ret = uvc_duplicate_frame(frame, copy);
 		if (UNLIKELY(ret)) {
+		    LOGE("uvc_callback:uvc_duplicate_frame failed!");
 			preview->recycle_frame(copy);
 			return;
 		}
+		LOGI("uvc_preview_frame_callback addPreviewFrame");
 		preview->addPreviewFrame(copy);
 	}
+		LOGI("uvc_preview_frame_callback ok");
 }
 
 void UVCPreview::addPreviewFrame(uvc_frame_t *frame) {
@@ -522,7 +533,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 
 void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 	ENTER();
-	LOGW("enter do preview");
+	LOGW("%p, enter do preview uvc_start_streaming_bandwidth with %d",this,requestBandwidth);
 
 	uvc_frame_t *frame = NULL;
 	uvc_frame_t *frame_mjpeg = NULL;
@@ -549,7 +560,20 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
 						addCaptureFrame(frame);
 					} else {
-						recycle_frame(frame);
+					    // maybe yuvuv already??
+					    // addCaptureFrame(frame);
+					    // FILE *fp = fopen("/sdcard/Android/data/com.serenegiant.usbcameratest4/files/1","wb");
+					    // fwrite(frame,1,frame->data_bytes,fp);
+					    // fflush(fp);
+					    // fclose(fp);
+					    if (frame->data_bytes == frame->width*frame->height*2){
+					        // 可能是 yuvuv?
+					        frame->frame_format = UVC_FRAME_FORMAT_YUYV;
+					        frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+					        addCaptureFrame(frame);
+					    }else{
+						    recycle_frame(frame);
+						}
 					}
 				}
 			}
@@ -559,6 +583,9 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				frame = waitPreviewFrame();
 				if (LIKELY(frame)) {
 					frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+					#if LOCAL_DEBUG
+                    		LOGD("preview_thread_func:addCaptureFrame");
+                    #endif
 					addCaptureFrame(frame);
 				}
 			}
@@ -677,37 +704,7 @@ inline const bool UVCPreview::isCapturing() const { return mIsCapturing; }
 
 int UVCPreview::setCaptureDisplay(ANativeWindow *capture_window) {
 	ENTER();
-	pthread_mutex_lock(&capture_mutex);
-	{
-		if (isRunning() && isCapturing()) {
-			mIsCapturing = false;
-			if (mCaptureWindow) {
-				pthread_cond_signal(&capture_sync);
-				pthread_cond_wait(&capture_sync, &capture_mutex);	// wait finishing capturing
-			}
-		}
-		if (mCaptureWindow != capture_window) {
-			// release current Surface if already assigned.
-			if (UNLIKELY(mCaptureWindow))
-				ANativeWindow_release(mCaptureWindow);
-			mCaptureWindow = capture_window;
-			// if you use Surface came from MediaCodec#createInputSurface
-			// you could not change window format at least when you use
-			// ANativeWindow_lock / ANativeWindow_unlockAndPost
-			// to write frame data to the Surface...
-			// So we need check here.
-			if (mCaptureWindow) {
-				int32_t window_format = ANativeWindow_getFormat(mCaptureWindow);
-				if ((window_format != WINDOW_FORMAT_RGB_565)
-					&& (previewFormat == WINDOW_FORMAT_RGB_565)) {
-					LOGE("window format mismatch, cancelled movie capturing.");
-					ANativeWindow_release(mCaptureWindow);
-					mCaptureWindow = NULL;
-				}
-			}
-		}
-	}
-	pthread_mutex_unlock(&capture_mutex);
+
 	RETURN(0, int);
 }
 
@@ -793,11 +790,7 @@ void UVCPreview::do_capture(JNIEnv *env) {
 	callbackPixelFormatChanged();
 	for (; isRunning() ;) {
 		mIsCapturing = true;
-		if (mCaptureWindow) {
-			do_capture_surface(env);
-		} else {
-			do_capture_idle_loop(env);
-		}
+        do_capture_idle_loop(env);
 		pthread_cond_broadcast(&capture_sync);
 	}	// end of for (; isRunning() ;)
 	LOGW("leave do_capture!");
@@ -819,39 +812,6 @@ void UVCPreview::do_capture_idle_loop(JNIEnv *env) {
  */
 void UVCPreview::do_capture_surface(JNIEnv *env) {
 	ENTER();
-
-	uvc_frame_t *frame = NULL;
-	uvc_frame_t *converted = NULL;
-	char *local_picture_path;
-
-	for (; isRunning() && isCapturing() ;) {
-		frame = waitCaptureFrame();
-		if (LIKELY(frame)) {
-			// frame data is always YUYV format.
-			if LIKELY(isCapturing()) {
-				if (UNLIKELY(!converted)) {
-					converted = get_frame(previewBytes);
-				}
-				if (LIKELY(converted)) {
-					int b = uvc_any2rgbx(frame, converted);
-					if (!b) {
-						if (LIKELY(mCaptureWindow)) {
-							copyToSurface(converted, &mCaptureWindow);
-						}
-					}
-				}
-			}
-			do_capture_callback(env, frame);
-		}
-	}
-	if (converted) {
-		recycle_frame(converted);
-	}
-	if (mCaptureWindow) {
-		ANativeWindow_release(mCaptureWindow);
-		mCaptureWindow = NULL;
-	}
-
 	EXIT();
 }
 
