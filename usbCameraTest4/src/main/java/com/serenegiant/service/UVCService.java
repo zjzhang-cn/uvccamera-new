@@ -47,6 +47,8 @@ import com.serenegiant.usbcameratest4.MainActivity;
 import com.serenegiant.usbcameratest4.R;
 import com.serenegiant.utils.HandlerThreadHandler;
 
+import java.io.File;
+
 public class UVCService extends Service {
 	private static final boolean DEBUG = true;
 	private static final String TAG = "UVCService";
@@ -66,6 +68,7 @@ public class UVCService extends Service {
 	@Override
 	public void onCreate() {
 		super.onCreate();
+		getExternalFilesDir(null).mkdirs();
 		if (DEBUG) Log.d(TAG, "onCreate:");
 		if (mUSBMonitor == null) {
 			mUSBMonitor = new USBMonitor(getApplicationContext(), mOnDeviceConnectListener);

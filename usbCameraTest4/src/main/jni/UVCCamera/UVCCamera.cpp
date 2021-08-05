@@ -154,10 +154,65 @@ int UVCCamera::connect(int vid, int pid, int fd, int busnum, int devaddr, const 
 		fd = dup(fd);
 		// 指定したvid,idを持つデバイスを検索, 見つかれば0を返してmDeviceに見つかったデバイスをセットする(既に1回uvc_ref_deviceを呼んである)
 //		result = uvc_find_device2(mContext, &mDevice, vid, pid, NULL, fd);
-		result = uvc_get_device_with_fd(mContext, &mDevice, vid, pid, NULL, fd, busnum, devaddr);
+//      result = uvc_get_device_with_fd(mContext, &mDevice, vid, pid, NULL, fd, busnum, devaddr);
+#ifdef old_imp
+/**
+ * XXX add for non-rooted Android device, >= Android7
+ * generate fake libusb_device according to specific params
+ * and set it to uvc_device_t to access UVC device on Android7 or later
+ */
+uvc_error_t uvc_get_device_with_fd(uvc_context_t *ctx, uvc_device_t **device,
+		int vid, int pid, const char *serial, int fd, int busnum, int devaddr) {
+
+	ENTER();
+
+	LOGD("call libusb_get_device_with_fd");
+	struct libusb_device *usb_dev = libusb_get_device_with_fd(ctx->usb_ctx, vid, pid, serial, fd, busnum, devaddr);
+
+	if (LIKELY(usb_dev)) {
+		*device = malloc(sizeof(uvc_device_t/* *device */));
+		(*device)->ctx = ctx;
+		(*device)->ref = 0;
+		(*device)->usb_dev = usb_dev;
+//		libusb_set_device_fd(usb_dev, fd);	// assign fd to libusb_device for non-rooted Android devices
+		uvc_ref_device(*device);
+		UVC_EXIT(UVC_SUCCESS);
+		RETURN(UVC_SUCCESS, int);
+	} else {
+		LOGE("could not find specific device");
+		*device = NULL;
+		RETURN(UVC_ERROR_NO_DEVICE, int);
+	}
+
+}
+#endif
+
+
+        libusb_device_handle *devh = NULL;
+	    int r = libusb_wrap_sys_device(mContext->usb_ctx, (intptr_t)fd, &devh);
+        if (r < 0) {
+            LOGD("libusb_wrap_sys_device failed: %d\n", r);
+            return result;
+        } else if (devh == NULL) {
+            LOGD("libusb_wrap_sys_device returned invalid handle\n");
+            return r;
+        }
+        struct libusb_device *usb_dev = libusb_get_device(devh);
+        if (LIKELY(usb_dev)) {
+            mDevice = (uvc_device *)malloc(sizeof(uvc_device_t/* *device */));
+            mDevice->ctx = mContext;
+            mDevice->ref = 0;
+            mDevice->usb_dev = usb_dev;
+    //		libusb_set_device_fd(usb_dev, fd);	// assign fd to libusb_device for non-rooted Android devices
+            uvc_ref_device(mDevice);
+        } else {
+            LOGE("could not find specific device");
+            mDevice = NULL;
+            RETURN(UVC_ERROR_NO_DEVICE, int);
+        }
 		if (LIKELY(!result)) {
 			// カメラのopen処理
-			result = uvc_open(mDevice, &mDeviceHandle);
+			result = uvc_open(mDevice, &mDeviceHandle, devh);
 			if (LIKELY(!result)) {
 				// open出来た時
 #if LOCAL_DEBUG
@@ -966,6 +1021,7 @@ int UVCCamera::getExposure() {
 
 	ENTER();
 	int r = UVC_ERROR_ACCESS;
+	/*
 	if LIKELY((mDeviceHandle) && (mCtrlSupports & CTRL_AE_ABS)) {
 		int ae_abs;
 		r = uvc_get_exposure_abs(mDeviceHandle, &ae_abs, UVC_GET_CUR);
@@ -973,7 +1029,7 @@ int UVCCamera::getExposure() {
 		if (LIKELY(!r)) {
 			r = ae_abs;
 		}
-	}
+	}*/
 	RETURN(r, int);
 }
 
@@ -1004,6 +1060,7 @@ int UVCCamera::getExposureRel() {
 
 	ENTER();
 	int r = UVC_ERROR_ACCESS;
+	/*
 	if LIKELY((mDeviceHandle) && (mCtrlSupports & CTRL_AE_REL)) {
 		int ae_rel;
 		r = uvc_get_exposure_rel(mDeviceHandle, &ae_rel, UVC_GET_CUR);
@@ -1011,7 +1068,7 @@ int UVCCamera::getExposureRel() {
 		if (LIKELY(!r)) {
 			r = ae_rel;
 		}
-	}
+	}*/
 	RETURN(r, int);
 }
 
@@ -1074,6 +1131,7 @@ int UVCCamera::setFocus(int focus) {
 // フォーカス(絶対値)の現在値を取得
 int UVCCamera::getFocus() {
 	ENTER();
+	/*
 	if (mCtrlSupports & CTRL_FOCUS_ABS) {
 		int ret = update_ctrl_values(mDeviceHandle, mFocus, uvc_get_focus_abs);
 		if (LIKELY(!ret)) {	// 正常に最小・最大値を取得出来た時
@@ -1083,6 +1141,7 @@ int UVCCamera::getFocus() {
 				return value;
 		}
 	}
+	*/
 	RETURN(0, int);
 }
 
@@ -1536,6 +1595,7 @@ int UVCCamera::setBacklightComp(int backlight) {
 // backlight_compensationの現在値を取得
 int UVCCamera::getBacklightComp() {
 	ENTER();
+	/*
 	if (mPUSupports & PU_BACKLIGHT) {
 		int ret = update_ctrl_values(mDeviceHandle, mBacklightComp, uvc_get_backlight_compensation);
 		if (LIKELY(!ret)) {	// 正常に最小・最大値を取得出来た時
@@ -1544,7 +1604,7 @@ int UVCCamera::getBacklightComp() {
 			if (LIKELY(!ret))
 				return value;
 		}
-	}
+	}*/
 	RETURN(0, int);
 }
 
@@ -1839,9 +1899,11 @@ int UVCCamera::getWhiteBlance() {
 int UVCCamera::updateWhiteBlanceCompoLimit(int &min, int &max, int &def) {
 	ENTER();
 	int ret = UVC_ERROR_IO;
+	/*
 	if (mPUSupports & PU_WB_COMPO) {
 		UPDATE_CTRL_VALUES(mWhiteBlanceCompo, uvc_get_white_balance_component)
 	}
+	*/
 	RETURN(ret, int);
 }
 
@@ -1849,17 +1911,19 @@ int UVCCamera::updateWhiteBlanceCompoLimit(int &min, int &max, int &def) {
 int UVCCamera::setWhiteBlanceCompo(int white_blance_compo) {
 	ENTER();
 	int ret = UVC_ERROR_IO;
+	/*
 	if (mPUSupports & PU_WB_COMPO) {
 		ret = internalSetCtrlValue(mWhiteBlanceCompo, white_blance_compo,
 			uvc_get_white_balance_component, uvc_set_white_balance_component);
 	}
+	*/
 	RETURN(ret, int);
 }
 
 // ホワイトバランスcompoの現在値を取得
 int UVCCamera::getWhiteBlanceCompo() {
 	ENTER();
-	if (mPUSupports & PU_WB_COMPO) {
+	/*if (mPUSupports & PU_WB_COMPO) {
 		int ret = update_ctrl_values(mDeviceHandle, mWhiteBlanceCompo, uvc_get_white_balance_component);
 		if (LIKELY(!ret)) {	// 正常に最小・最大値を取得出来た時
 			uint32_t white_blance_compo;
@@ -1868,6 +1932,7 @@ int UVCCamera::getWhiteBlanceCompo() {
 				return white_blance_compo;
 		}
 	}
+	*/
 	RETURN(0, int);
 }
 
@@ -2022,7 +2087,7 @@ int UVCCamera::updatePowerlineFrequencyLimit(int &min, int &max, int &def) {
 	ENTER();
 	int ret = UVC_ERROR_IO;
 	if (mCtrlSupports & PU_POWER_LF) {
-		UPDATE_CTRL_VALUES(mPowerlineFrequency, uvc_get_powerline_freqency)
+		UPDATE_CTRL_VALUES(mPowerlineFrequency, uvc_get_power_line_frequency)
 	}
 	RETURN(ret, int);
 }
@@ -2034,14 +2099,14 @@ int UVCCamera::setPowerlineFrequency(int frequency) {
 	if (mPUSupports & PU_POWER_LF) {
 		if (frequency < 0) {
 			uint8_t value;
-			ret = uvc_get_powerline_freqency(mDeviceHandle, &value, UVC_GET_DEF);
+			ret = uvc_get_power_line_frequency(mDeviceHandle, &value, UVC_GET_DEF);
 			if LIKELY(ret)
 				frequency = value;
 			else
 				RETURN(ret, int);
 		}
 		LOGD("frequency:%d", frequency);
-		ret = uvc_set_powerline_freqency(mDeviceHandle, frequency);
+		ret = uvc_set_power_line_frequency(mDeviceHandle, frequency);
 	}
 
 	RETURN(ret, int);
@@ -2052,7 +2117,7 @@ int UVCCamera::getPowerlineFrequency() {
 	ENTER();
 	if (mPUSupports & PU_POWER_LF) {
 		uint8_t value;
-		int ret = uvc_get_powerline_freqency(mDeviceHandle, &value, UVC_GET_CUR);
+		int ret = uvc_get_power_line_frequency(mDeviceHandle, &value, UVC_GET_CUR);
 		LOGD("frequency:%d", ret);
 		if (LIKELY(!ret))
 			return value;
@@ -2254,7 +2319,7 @@ int UVCCamera::updateAnalogVideoLockStateLimit(int &min, int &max, int &def) {
 	ENTER();
 	int ret = UVC_ERROR_IO;
 	if (mPUSupports & PU_AVIDEO_LOCK) {
-		UPDATE_CTRL_VALUES(mAnalogVideoLockState, uvc_get_analog_video_lockstate)
+		UPDATE_CTRL_VALUES(mAnalogVideoLockState, uvc_get_analog_video_lock_status)
 	}
 	RETURN(ret, int);
 }
@@ -2264,7 +2329,7 @@ int UVCCamera::setAnalogVideoLockState(int state) {
 	int ret = UVC_ERROR_IO;
 	if (mPUSupports & PU_AVIDEO_LOCK) {
 //		LOGI("status:%d", status);
-		ret = internalSetCtrlValue(mAnalogVideoLockState, state, uvc_get_analog_video_lockstate, uvc_set_analog_video_lockstate);
+		ret = internalSetCtrlValue(mAnalogVideoLockState, state, uvc_get_analog_video_lock_status, uvc_set_analog_video_lock_status);
 	}
 	RETURN(ret, int);
 }
@@ -2272,10 +2337,10 @@ int UVCCamera::setAnalogVideoLockState(int state) {
 int UVCCamera::getAnalogVideoLockState() {
 	ENTER();
 	if (mPUSupports & PU_AVIDEO_LOCK) {
-		int ret = update_ctrl_values(mDeviceHandle, mAnalogVideoLockState, uvc_get_analog_video_lockstate);
+		int ret = update_ctrl_values(mDeviceHandle, mAnalogVideoLockState, uvc_get_analog_video_lock_status);
 		if (LIKELY(!ret)) {	// 正常に最小・最大値を取得出来た時
 			uint8_t status;
-			ret = uvc_get_analog_video_lockstate(mDeviceHandle, &status, UVC_GET_CUR);
+			ret = uvc_get_analog_video_lock_status(mDeviceHandle, &status, UVC_GET_CUR);
 //			LOGI("status:%d", status);
 			if (LIKELY(!ret))
 				return status;

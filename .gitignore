@@ -52,3 +52,4 @@ build
 .idea/
 profiles_settings.xml
 libuvccamera/src/main/libs
+/usbCameraTest4/src/main/jni/libuvc/.vscode/

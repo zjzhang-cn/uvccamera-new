@@ -56,7 +56,7 @@
 uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes) {
 	if LIKELY(frame->library_owns_data) {
 		if UNLIKELY(!frame->data || frame->data_bytes != need_bytes) {
-			frame->actual_bytes = frame->data_bytes = need_bytes;	// XXX
+			frame->data_bytes = frame->data_bytes = need_bytes;	// XXX
 			frame->data = realloc(frame->data, frame->data_bytes);
 		}
 		if (UNLIKELY(!frame->data || !need_bytes))
@@ -90,7 +90,7 @@ uvc_frame_t *uvc_allocate_frame(size_t data_bytes) {
 
 	if (LIKELY(data_bytes > 0)) {
 		frame->library_owns_data = 1;
-		frame->actual_bytes = frame->data_bytes = data_bytes;	// XXX
+		frame->data_bytes = frame->data_bytes = data_bytes;	// XXX
 		frame->data = malloc(data_bytes);
 
 		if (UNLIKELY(!frame->data)) {
@@ -136,7 +136,7 @@ uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out) {
 	out->sequence = in->sequence;
 	out->capture_time = in->capture_time;
 	out->source = in->source;
-	out->actual_bytes = in->actual_bytes;	// XXX
+	out->data_bytes = in->data_bytes;	// XXX
 
 #if USE_STRIDE	 // XXX
 	if (in->step && out->step) {
@@ -159,10 +159,10 @@ uvc_error_t uvc_duplicate_frame(uvc_frame_t *in, uvc_frame_t *out) {
 		}
 	} else {
 		// compressed format? XXX if only one of the frame in / out has step, this may lead to crash...
-		memcpy(out->data, in->data, in->actual_bytes);
+		memcpy(out->data, in->data, in->data_bytes);
 	}
 #else
-	memcpy(out->data, in->data, in->actual_bytes); // XXX
+	memcpy(out->data, in->data, in->data_bytes); // XXX
 #endif
 	return UVC_SUCCESS;
 }

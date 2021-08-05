@@ -62,6 +62,7 @@ LOCAL_SHARED_LIBRARIES += jpeg-turbo1500
 LOCAL_SHARED_LIBRARIES += usb100
 
 LOCAL_SRC_FILES := \
+	src/ctrl-gen.c \
 	src/ctrl.c \
 	src/device.c \
 	src/diag.c \

@@ -176,7 +176,7 @@ uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	lines_read = 0;
 	unsigned char *buffer[MAX_READLINE];
 
-	out->actual_bytes = 0;	// XXX
+	out->data_bytes = 0;	// XXX
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
 		return UVC_ERROR_INVALID_PARAM;
 
@@ -199,7 +199,7 @@ uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);
+	jpeg_mem_src(&dinfo, in->data, in->data_bytes/*in->data_bytes*/);
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -220,7 +220,7 @@ uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out) {
 			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
 			lines_read += num_scanlines;
 		}
-		out->actual_bytes = in->width * in->height * 3;	// XXX
+		out->data_bytes = in->width * in->height * 3;	// XXX
 	}
 	jpeg_finish_decompress(&dinfo);
 	jpeg_destroy_decompress(&dinfo);
@@ -246,7 +246,7 @@ uvc_error_t uvc_mjpeg2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	lines_read = 0;
 	unsigned char *buffer[MAX_READLINE];
 
-	out->actual_bytes = 0;	// XXX
+	out->data_bytes = 0;	// XXX
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
 		return UVC_ERROR_INVALID_PARAM;
 
@@ -269,7 +269,7 @@ uvc_error_t uvc_mjpeg2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);
+	jpeg_mem_src(&dinfo, in->data, in->data_bytes/*in->data_bytes*/);
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -294,7 +294,7 @@ uvc_error_t uvc_mjpeg2bgr(uvc_frame_t *in, uvc_frame_t *out) {
 			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
 			lines_read += num_scanlines;
 		}
-		out->actual_bytes = in->width * in->height * 3;	// XXX
+		out->data_bytes = in->width * in->height * 3;	// XXX
 	}
 	jpeg_finish_decompress(&dinfo);
 	jpeg_destroy_decompress(&dinfo);
@@ -320,7 +320,7 @@ uvc_error_t uvc_mjpeg2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	lines_read = 0;
 	unsigned char *buffer[MAX_READLINE];
 
-	out->actual_bytes = 0;	// XXX
+	out->data_bytes = 0;	// XXX
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
 		return UVC_ERROR_INVALID_PARAM;
 
@@ -343,7 +343,7 @@ uvc_error_t uvc_mjpeg2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);
+	jpeg_mem_src(&dinfo, in->data, in->data_bytes/*in->data_bytes*/);
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -368,7 +368,7 @@ uvc_error_t uvc_mjpeg2rgb565(uvc_frame_t *in, uvc_frame_t *out) {
 			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
 			lines_read += num_scanlines;
 		}
-		out->actual_bytes = in->width * in->height * 2;	// XXX
+		out->data_bytes = in->width * in->height * 2;	// XXX
 	}
 	jpeg_finish_decompress(&dinfo);
 	jpeg_destroy_decompress(&dinfo);
@@ -397,7 +397,7 @@ uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	lines_read = 0;
 	unsigned char *buffer[MAX_READLINE];
 
-	out->actual_bytes = 0;	// XXX
+	out->data_bytes = 0;	// XXX
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
 		return UVC_ERROR_INVALID_PARAM;
 
@@ -420,7 +420,7 @@ uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);	// XXX
+	jpeg_mem_src(&dinfo, in->data, in->data_bytes/*in->data_bytes*/);	// XXX
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -441,7 +441,7 @@ uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out) {
 			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
 			lines_read += num_scanlines;
 		}
-		out->actual_bytes = in->width * in->height * 4;	// XXX
+		out->data_bytes = in->width * in->height * 4;	// XXX
 	}
 	jpeg_finish_decompress(&dinfo);
 	jpeg_destroy_decompress(&dinfo);
@@ -466,7 +466,7 @@ static inline unsigned char sat(int i) {
 
 uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 
-	out->actual_bytes = 0;	// XXX
+	out->data_bytes = 0;	// XXX
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
 		return UVC_ERROR_INVALID_PARAM;
 
@@ -496,7 +496,7 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 	}
 
 	jpeg_create_decompress(&dinfo);
-	jpeg_mem_src(&dinfo, in->data, in->actual_bytes/*in->data_bytes*/);	// XXX
+	jpeg_mem_src(&dinfo, in->data, in->data_bytes/*in->data_bytes*/);	// XXX
 	jpeg_read_header(&dinfo, TRUE);
 
 	if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
@@ -538,7 +538,7 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 			}
 			lines_read += num_scanlines;
 		}
-		out->actual_bytes = in->width * in->height * 2;	// XXX
+		out->data_bytes = in->width * in->height * 2;	// XXX
 	}
 
 	jpeg_finish_decompress(&dinfo);

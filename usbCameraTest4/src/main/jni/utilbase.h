@@ -208,7 +208,7 @@
 #define		EXIT()				{LOGD("end"); return;}
 #define		PRE_EXIT()			LOGD("end")
 
-#if defined(__ANDROID__) && (defined(USE_LOGALL) || defined(USE_LOGI)) && !defined(LOG_NDEBUG)
+#if defined(__ANDROID__)
 #define MARK(FMT, ...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "[%s:%d:%s]:" FMT,	\
 						basename(__FILE__), __LINE__, __FUNCTION__, ## __VA_ARGS__)
 #else

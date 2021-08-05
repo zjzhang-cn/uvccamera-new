@@ -71,7 +71,7 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 
 	ENTER();
 
-	LOGW("%p create with requestBandwidth:%d",this,requestBandwidth);
+	LOGW("%p create with requestBandwidth:%d",this,(int)requestBandwidth);
 	pthread_cond_init(&preview_sync, NULL);
 	pthread_mutex_init(&preview_mutex, NULL);
 //
@@ -182,10 +182,10 @@ int UVCPreview::setPreviewSize(int width, int height, int min_fps, int max_fps, 
 		requestHeight = height;
 		requestMode = mode;
 
-		uvc_stream_ctrl_t ctrl;
-		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
-			!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
-			requestWidth, requestHeight, requestMinFps, requestMaxFps);
+		// uvc_stream_ctrl_t ctrl;
+		//result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
+		//	!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
+		//	requestWidth, requestHeight, requestMinFps, requestMaxFps);
 	}
 
 	RETURN(result, int);
@@ -267,7 +267,7 @@ void UVCPreview::callbackPixelFormatChanged() {
 		break;
 	  case PIXEL_FORMAT_RGB565:
 		LOGI("PIXEL_FORMAT_RGB565:");
-		mFrameCallbackFunc = uvc_any2rgb565;
+		mFrameCallbackFunc = uvc_any2rgb;
 		callbackPixelBytes = sz * 2;
 		break;
 	  case PIXEL_FORMAT_RGBX:
@@ -409,7 +409,7 @@ void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args)
 	    return;
 	}
 	if (UNLIKELY(
-		((frame->frame_format != UVC_FRAME_FORMAT_MJPEG) && (frame->actual_bytes < preview->frameBytes))
+		((frame->frame_format != UVC_FRAME_FORMAT_MJPEG) && (frame->data_bytes < preview->frameBytes))
 		|| (frame->width != preview->frameWidth) || (frame->height != preview->frameHeight) )) {
 
 //#if LOCAL_DEBUG
@@ -498,14 +498,15 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 	uvc_error_t result;
 
 	ENTER();
-	result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, ctrl,
+	result = uvc_get_stream_ctrl_format_size(mDeviceHandle, ctrl,
 		!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
-		requestWidth, requestHeight, requestMinFps, requestMaxFps
+		requestWidth, requestHeight, requestMaxFps
 	);
 	if (LIKELY(!result)) {
 #if LOCAL_DEBUG
-		uvc_print_stream_ctrl(ctrl, stderr);
+		// uvc_print_stream_ctrl(ctrl, stderr);
 #endif
+/*
 		uvc_frame_desc_t *frame_desc;
 		result = uvc_get_frame_desc(mDeviceHandle, ctrl, &frame_desc);
 		if (LIKELY(!result)) {
@@ -518,7 +519,9 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 					frameWidth, frameHeight, previewFormat);
 			}
 			pthread_mutex_unlock(&preview_mutex);
-		} else {
+		} else
+*/
+		{
 			frameWidth = requestWidth;
 			frameHeight = requestHeight;
 		}
@@ -531,14 +534,29 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 	RETURN(result, int);
 }
 
+uvc_error_t uvc_start_streaming_bandwidth2(uvc_device_handle_t *devh,uvc_stream_ctrl_t *ctrl,uvc_stream_handle_t **strmh) {
+	uvc_error_t ret;
+
+	ret = uvc_stream_open_ctrl(devh, strmh, ctrl);
+	if (UNLIKELY(ret != UVC_SUCCESS))
+		return ret;
+
+	ret = uvc_stream_start(*strmh, NULL, NULL, 0);
+	if (UNLIKELY(ret != UVC_SUCCESS)) {
+		uvc_stream_close(*strmh);
+		return ret;
+	}
+
+	return UVC_SUCCESS;
+}
+
 void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 	ENTER();
-	LOGW("%p, enter do preview uvc_start_streaming_bandwidth with %d",this,requestBandwidth);
+	LOGW("%p, enter do preview uvc_start_streaming_bandwidth with %d",this,(int)requestBandwidth);
 
 	uvc_frame_t *frame = NULL;
-	uvc_frame_t *frame_mjpeg = NULL;
-	uvc_error_t result = uvc_start_streaming_bandwidth(
-		mDeviceHandle, ctrl, uvc_preview_frame_callback, (void *)this, requestBandwidth, 0);
+	uvc_stream_handle_t *stmh;
+	uvc_error_t result = uvc_start_streaming_bandwidth2(mDeviceHandle, ctrl, &stmh);
 
 	if (LIKELY(!result)) {
 		clearPreviewFrame();
@@ -550,32 +568,63 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 		if (frameMode) {
 			// MJPEG mode
 			for ( ; LIKELY(isRunning()) ; ) {
-				frame_mjpeg = waitPreviewFrame();
-				LOGI("Stream got mjpeg..");
-				if (LIKELY(frame_mjpeg)) {
-					frame = get_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
-					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
-					recycle_frame(frame_mjpeg);
-					if (LIKELY(!result)) {
-						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
-						addCaptureFrame(frame);
-					} else {
-					    // maybe yuvuv already??
-					    // addCaptureFrame(frame);
-					    // FILE *fp = fopen("/sdcard/Android/data/com.serenegiant.usbcameratest4/files/1","wb");
-					    // fwrite(frame,1,frame->data_bytes,fp);
-					    // fflush(fp);
-					    // fclose(fp);
-					    if (frame->data_bytes == frame->width*frame->height*2){
-					        // 可能是 yuvuv?
-					        frame->frame_format = UVC_FRAME_FORMAT_YUYV;
-					        frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
-					        addCaptureFrame(frame);
-					    }else{
-						    recycle_frame(frame);
-						}
-					}
+				// frame_mjpeg = waitPreviewFrame();
+
+	            uvc_frame_t *frame_mjpeg = NULL;
+				result = uvc_stream_get_frame(stmh,&frame_mjpeg,30000000);
+				if (LIKELY(result)){
+				    LOGW("uvc_stream_get_frame failed:%d", result);
+				    break;
 				}
+				if (!LIKELY(frame_mjpeg)){
+				    LOGD("uvc_stream_get_frame timeout", result);
+				    continue;
+				}
+				static uint8_t jpg_hd[] = {0xff,0xd8};
+				LOGI("Stream got mjpeg..%dX%d,size:%d",frame_mjpeg->width,frame_mjpeg->height,frame_mjpeg->data_bytes);
+				if (frame_mjpeg->data_bytes > 2 && memcmp(frame_mjpeg->data,jpg_hd, 2) == 0){
+				    char * data = (char *)frame_mjpeg->data+2;
+				    int bytes = frame_mjpeg->data_bytes;
+				    while(true){
+				        if (data <= (char *)frame_mjpeg->data + frame_mjpeg->data_bytes - 2){
+				            if (memcmp(data,jpg_hd, 2) == 0){
+				                bytes = data - (char *)frame_mjpeg->data;
+				                break;
+				            }
+				            data = data+1;
+				        }else{
+				            break;
+				        }
+				    }
+                    FILE *f = fopen("/sdcard/v3.jpg","wb");
+                    fwrite(frame_mjpeg->data,1,bytes,f);
+                    fclose(f);
+				}
+                frame = get_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
+                result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
+
+                if (LIKELY(!result)) {
+
+                    frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+                    addCaptureFrame(frame);
+                } else {
+                    // maybe yuvuv already??
+                    // addCaptureFrame(frame);
+                    // FILE *fp = fopen("/sdcard/Android/data/com.serenegiant.usbcameratest4/files/1","wb");
+                    // fwrite(frame,1,frame->data_bytes,fp);
+                    // fflush(fp);
+                    // fclose(fp);
+
+//					    if (frame->data_bytes == frame->width*frame->height*2){
+                        // 可能是 yuvuv?
+//					        frame->frame_format = UVC_FRAME_FORMAT_YUYV;
+//					        frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+//					        addCaptureFrame(frame);
+//					    }
+
+                    recycle_frame(frame);
+
+                }
 			}
 		} else {
 			// yuvyv mode
