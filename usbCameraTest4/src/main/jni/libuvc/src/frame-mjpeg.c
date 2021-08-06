@@ -42,6 +42,7 @@
 #include "libuvc/libuvc.h"
 #include "libuvc/libuvc_internal.h"
 #include <jpeglib.h>
+#include "turbojpeg.h"
 #include <setjmp.h>
 
 extern uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes);
@@ -550,3 +551,44 @@ fail:
 	return lines_read == out->height ? UVC_SUCCESS : UVC_ERROR_OTHER+1;
 }
 
+uvc_error_t uvc_mjpeg2yuv(void *handler, uvc_frame_t *in, uvc_frame_t *out) {
+
+	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
+		return UVC_ERROR_INVALID_PARAM;
+
+	size_t lines_read = 0;
+	int i, j;
+	int num_scanlines;
+	register uint8_t *yuyv, *ycbcr;
+// const unsigned char *jpegBuf, unsigned long jpegSize,unsigned char **dstPlanes, int width, int *strides, int height, int flags
+	// int r = tjDecompressToYUVPlanes((tjhandle)handler,in->data, in->data_bytes, planes,in->width,NULL, in->height, 0);
+
+	/*
+	DLLEXPORT int DLLCALL tjDecompressToYUV2(tjhandle handle,
+      const unsigned char *jpegBuf, unsigned long jpegSize, unsigned char *dstBuf,
+      int width, int pad, int height, int flags);
+	*/
+	int width,height, jpegSubsamp, jpegColorspace;
+	int r = tjDecompressHeader3((tjhandle)handler,in->data, in->data_bytes, &width,&height,&jpegSubsamp,&jpegColorspace);
+    size_t size = tjBufSizeYUV2(width,4,height,jpegSubsamp);
+    if (size > out->data_bytes){
+	    LOGI("frame too small.need:%d,actual:%d",size,out->data_bytes);
+        return -1;
+    }
+	out->width = width;
+	out->height = height;
+	out->capture_time = in->capture_time;
+	out->source = in->source;
+	out->data_bytes = size;
+
+
+	r = tjDecompressToYUV((tjhandle)handler,in->data, in->data_bytes, out->data,0);
+	if (r != 0){
+	    char *err = tjGetErrorStr();
+	    // LOGW(err);
+	    LOGI("err:%s\n",err);
+	    uvc_free_frame(out);
+	    return r;
+	}
+    return UVC_SUCCESS;
+}

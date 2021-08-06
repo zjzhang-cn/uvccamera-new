@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <linux/time.h>
 #include <unistd.h>
-
 #if 1	// set 1 if you don't need debug log
 	#ifndef LOG_NDEBUG
 		#define	LOG_NDEBUG		// w/o LOGV/LOGD/MARK
@@ -40,6 +39,7 @@
 #include "utilbase.h"
 #include "UVCPreview.h"
 #include "libuvc_internal.h"
+#include "turbojpeg.h"
 
 #define	LOCAL_DEBUG 1
 #define MAX_FRAME 4
@@ -109,31 +109,11 @@ UVCPreview::~UVCPreview() {
  * and you may need to confirm the size
  */
 uvc_frame_t *UVCPreview::get_frame(size_t data_bytes) {
-	uvc_frame_t *frame = NULL;
-	pthread_mutex_lock(&pool_mutex);
-	{
-		if (!mFramePool.isEmpty()) {
-			frame = mFramePool.last();
-		}
-	}
-	pthread_mutex_unlock(&pool_mutex);
-	if UNLIKELY(!frame) {
-		LOGW("allocate new frame");
-		frame = uvc_allocate_frame(data_bytes);
-	}
-	return frame;
+	return uvc_allocate_frame(data_bytes);
 }
 
 void UVCPreview::recycle_frame(uvc_frame_t *frame) {
-	pthread_mutex_lock(&pool_mutex);
-	if (LIKELY(mFramePool.size() < FRAME_POOL_SZ)) {
-		mFramePool.put(frame);
-		frame = NULL;
-	}
-	pthread_mutex_unlock(&pool_mutex);
-	if (UNLIKELY(frame)) {
-		uvc_free_frame(frame);
-	}
+    uvc_free_frame(frame);
 }
 
 
@@ -365,10 +345,6 @@ int UVCPreview::stopPreview() {
         LOGW("UVCPreview::stopPreview pthread_cond_signal(&preview_sync);");
 		pthread_cond_signal(&capture_sync);
         LOGW("UVCPreview::stopPreview pthread_cond_signal(&capture_sync);");
-		if (pthread_join(capture_thread, NULL) != EXIT_SUCCESS) {
-			LOGW("UVCPreview::terminate capture thread: pthread_join failed");
-		}
-        LOGW("UVCPreview::stopPreview capture_thread done;");
 		if (pthread_join(preview_thread, NULL) != EXIT_SUCCESS) {
 			LOGW("UVCPreview::terminate preview thread: pthread_join failed");
 		}
@@ -554,19 +530,25 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 	ENTER();
 	LOGW("%p, enter do preview uvc_start_streaming_bandwidth with %d",this,(int)requestBandwidth);
 
-	uvc_frame_t *frame = NULL;
+    JavaVM *vm = getVM();
+    JNIEnv *env;
+    // attach to JavaVM
+    vm->AttachCurrentThread(&env, NULL);
+
 	uvc_stream_handle_t *stmh;
 	uvc_error_t result = uvc_start_streaming_bandwidth2(mDeviceHandle, ctrl, &stmh);
-
+    tjhandle handler = tjInitDecompress();
 	if (LIKELY(!result)) {
 		clearPreviewFrame();
-		pthread_create(&capture_thread, NULL, capture_thread_func, (void *)this);
 
 #if LOCAL_DEBUG
 		LOGI("Streaming...");
 #endif
+
+		uvc_frame_t *frame = NULL;
 		if (frameMode) {
 			// MJPEG mode
+			int total = 0;
 			for ( ; LIKELY(isRunning()) ; ) {
 				// frame_mjpeg = waitPreviewFrame();
 
@@ -580,51 +562,43 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				    LOGD("uvc_stream_get_frame timeout", result);
 				    continue;
 				}
-				static uint8_t jpg_hd[] = {0xff,0xd8};
-				LOGI("Stream got mjpeg..%dX%d,size:%d",frame_mjpeg->width,frame_mjpeg->height,frame_mjpeg->data_bytes);
-				if (frame_mjpeg->data_bytes > 2 && memcmp(frame_mjpeg->data,jpg_hd, 2) == 0){
-				    char * data = (char *)frame_mjpeg->data+2;
-				    int bytes = frame_mjpeg->data_bytes;
-				    while(true){
-				        if (data <= (char *)frame_mjpeg->data + frame_mjpeg->data_bytes - 2){
-				            if (memcmp(data,jpg_hd, 2) == 0){
-				                bytes = data - (char *)frame_mjpeg->data;
-				                break;
-				            }
-				            data = data+1;
-				        }else{
-				            break;
-				        }
-				    }
-                    FILE *f = fopen("/sdcard/v3.jpg","wb");
-                    fwrite(frame_mjpeg->data,1,bytes,f);
+	            frame = get_frame(frame_mjpeg->width*frame_mjpeg->height*2);
+                if (!LIKELY(frame)){
+                    LOGD("alloc frame failed");
+                    continue;
+                }
+                result = uvc_mjpeg2yuv(handler,frame_mjpeg, frame);   // MJPEG => yuyv
+                if (result != 0){
+				    LOGD("uvc_mjpeg2yuv failed.%d\n", result);
+                    continue;
+                }
+                if (total == 90){
+                    FILE *f = fopen("/sdcard/v3.yuv","wb");
+                    fwrite(frame->data,1,frame->data_bytes,f);
                     fclose(f);
-				}
-                frame = get_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
-                result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
-
+                }
+                if (total == 90){
+                    FILE *f = fopen("/sdcard/v3.jpg","wb");
+                    fwrite(frame_mjpeg->data,1,frame_mjpeg->data_bytes,f);
+                    fclose(f);
+                }
                 if (LIKELY(!result)) {
 
-                    frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
-                    addCaptureFrame(frame);
-                } else {
-                    // maybe yuvuv already??
+                    // frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
                     // addCaptureFrame(frame);
-                    // FILE *fp = fopen("/sdcard/Android/data/com.serenegiant.usbcameratest4/files/1","wb");
-                    // fwrite(frame,1,frame->data_bytes,fp);
-                    // fflush(fp);
-                    // fclose(fp);
 
-//					    if (frame->data_bytes == frame->width*frame->height*2){
-                        // 可能是 yuvuv?
-//					        frame->frame_format = UVC_FRAME_FORMAT_YUYV;
-//					        frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
-//					        addCaptureFrame(frame);
-//					    }
-
-                    recycle_frame(frame);
-
+	                pthread_mutex_lock(&capture_mutex);
+	                if (mFrameCallbackObj){
+                        jobject buf = env->NewDirectByteBuffer(frame->data, frame->data_bytes);
+                        env->CallVoidMethod(mFrameCallbackObj, iframecallback_fields.onFrame, buf);
+                        env->ExceptionClear();
+                        env->DeleteLocalRef(buf);
+                    }
+                    pthread_mutex_unlock(&capture_mutex);
                 }
+                uvc_free_frame(frame);
+                //if (total++ >100)
+                  //break;
 			}
 		} else {
 			// yuvyv mode
@@ -639,18 +613,13 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				}
 			}
 		}
-		pthread_cond_signal(&capture_sync);
-#if LOCAL_DEBUG
-		LOGI("preview_thread_func:wait for all callbacks complete");
-#endif
 		uvc_stop_streaming(mDeviceHandle);
-#if LOCAL_DEBUG
-		LOGI("Streaming finished");
-#endif
 	} else {
 		uvc_perror(result, "failed start_streaming");
 	}
-    LOGW("leave do preview");
+    tjDestroy(handler);
+    vm->DetachCurrentThread();
+    MARK("DetachCurrentThread");
 	EXIT();
 }
 
@@ -802,68 +771,6 @@ void UVCPreview::clearCaptureFrame() {
 	pthread_mutex_unlock(&capture_mutex);
 }
 
-//======================================================================
-/*
- * thread function
- * @param vptr_args pointer to UVCPreview instance
- */
-// static
-void *UVCPreview::capture_thread_func(void *vptr_args) {
-	int result;
-
-	ENTER();
-	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
-	if (LIKELY(preview)) {
-		JavaVM *vm = getVM();
-		JNIEnv *env;
-		// attach to JavaVM
-		vm->AttachCurrentThread(&env, NULL);
-		preview->do_capture(env);	// never return until finish previewing
-		// detach from JavaVM
-		vm->DetachCurrentThread();
-		MARK("DetachCurrentThread");
-	}
-	PRE_EXIT();
-	pthread_exit(NULL);
-}
-
-/**
- * the actual function for capturing
- */
-void UVCPreview::do_capture(JNIEnv *env) {
-
-	ENTER();
-	LOGW("ENTER do_capture!");
-
-	clearCaptureFrame();
-	callbackPixelFormatChanged();
-	for (; isRunning() ;) {
-		mIsCapturing = true;
-        do_capture_idle_loop(env);
-		pthread_cond_broadcast(&capture_sync);
-	}	// end of for (; isRunning() ;)
-	LOGW("leave do_capture!");
-	EXIT();
-}
-
-void UVCPreview::do_capture_idle_loop(JNIEnv *env) {
-	ENTER();
-	
-	for (; isRunning() && isCapturing() ;) {
-		do_capture_callback(env, waitCaptureFrame());
-	}
-	
-	EXIT();
-}
-
-/**
- * write frame data to Surface for capturing
- */
-void UVCPreview::do_capture_surface(JNIEnv *env) {
-	ENTER();
-	EXIT();
-}
-
 /**
 * call IFrameCallback#onFrame if needs
  */
@@ -873,7 +780,7 @@ void UVCPreview::do_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
 	if (LIKELY(frame)) {
 		uvc_frame_t *callback_frame = frame;
 		if (mFrameCallbackObj) {
-			if (mFrameCallbackFunc) {
+			if (0 && mFrameCallbackFunc) {
 				callback_frame = get_frame(callbackPixelBytes);
 				if (LIKELY(callback_frame)) {
 					int b = mFrameCallbackFunc(frame, callback_frame);
