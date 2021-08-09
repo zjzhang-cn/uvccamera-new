@@ -40,11 +40,37 @@
 #include "UVCPreview.h"
 #include "libuvc_internal.h"
 #include "turbojpeg.h"
+#include "libyuv.h"
 
 #define	LOCAL_DEBUG 1
 #define MAX_FRAME 4
 #define PREVIEW_PIXEL_BYTES 4	// RGBA/RGBX
 #define FRAME_POOL_SZ MAX_FRAME + 2
+
+#ifndef YUV_SIZE
+	#define YUV_SIZE(w,h) w*h*3/2
+#endif
+#ifndef Y
+	#define Y(s) (const uint8_t *)s
+#endif
+#ifndef U
+	#define U(s) (const uint8_t *)((uint8_t *)s+width*height)
+#endif
+#ifndef V
+	#define V(s) (const uint8_t *)((uint8_t *)s+(width*height + width * height/4))
+#endif
+#ifndef V422
+	#define V422(s) (const uint8_t *)((uint8_t *)s+(width*height + width * height/2))
+#endif
+#ifndef DY
+	#define DY(s) (uint8_t *)s
+#endif
+#ifndef DU
+	#define DU(s) (uint8_t *)((uint8_t *)s+width*height)
+#endif
+#ifndef DV
+	#define DV(s) (uint8_t *)((uint8_t *)s+(width*height + width * height/4))
+#endif
 
 UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 :	mPreviewWindow(NULL),
@@ -572,6 +598,18 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				    LOGD("uvc_mjpeg2yuv failed.%d\n", result);
                     continue;
                 }
+                const uint8_t width = frame->width;
+                const uint8_t height = frame->height;
+	            uvc_frame_t *i420 = get_frame(frame_mjpeg->width*frame_mjpeg->height*3/2);
+                libyuv::I422ToI420(
+                    Y(frame->data), width,
+                    U(frame->data), (width+1)/2,
+                    V422(frame->data),(width+1)/2,
+                    DY(i420->data), width,
+                    DU(i420->data), (width+1)/2,
+                    DV(i420->data),(width+1)/2,
+                    frame->width, frame->height
+                );
                 if (total == 90){
                     FILE *f = fopen("/sdcard/v3.yuv","wb");
                     fwrite(frame->data,1,frame->data_bytes,f);
@@ -589,13 +627,14 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 
 	                pthread_mutex_lock(&capture_mutex);
 	                if (mFrameCallbackObj){
-                        jobject buf = env->NewDirectByteBuffer(frame->data, frame->data_bytes);
+                        jobject buf = env->NewDirectByteBuffer(i420->data, i420->data_bytes);
                         env->CallVoidMethod(mFrameCallbackObj, iframecallback_fields.onFrame, buf);
                         env->ExceptionClear();
                         env->DeleteLocalRef(buf);
                     }
                     pthread_mutex_unlock(&capture_mutex);
                 }
+                uvc_free_frame(i420);
                 uvc_free_frame(frame);
                 //if (total++ >100)
                   //break;
