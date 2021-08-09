@@ -34,8 +34,8 @@ android {
 	}
 
     defaultConfig {
-//        minSdkVersion 18
 		targetSdkVersion versionTarget
+		versionName uvcVersionName
     }
 
     buildTypes {
@@ -88,5 +88,38 @@ dependencies {
 
 	implementation 'androidx.legacy:legacy-support-v4:1.0.0'
 	implementation 'androidx.annotation:annotation:1.0.0'
-    implementation project(path: ':usbCameraCommon')
+//    implementation project(path: ':usbCameraCommon')
+}
+
+apply plugin: 'maven'
+uploadArchives {
+	repositories.mavenDeployer {
+		repository(url:"https://repo.rdc.aliyun.com/repository/39749-release-oGtrdD") {
+			authentication(userName:maven_user, password:maven_pwd)
+		}
+
+		// 以com.android.support:appcompat-v7:25.1.0为对比
+		pom.version= android.defaultConfig.versionName// 对应版本号 25.1.0
+		pom.artifactId="uvccamera" // 对应 appcompat-v7
+		pom.groupId="com.serenegiant.usb" // com.android.support
+	}
+}
+task sourcesJar(type: Jar) {
+	from android.sourceSets.main.java.srcDirs
+	classifier = 'sources'
+}
+
+//task javadoc(type: Javadoc) {
+//    source = android.sourceSets.main.java.srcDirs
+//    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+//}
+
+//task javadocJar(type: Jar, dependsOn: javadoc) {
+//    classifier = 'javadoc'
+//    from javadoc.destinationDir
+//}
+
+artifacts {
+//    archives javadocJar
+	archives sourcesJar
 }

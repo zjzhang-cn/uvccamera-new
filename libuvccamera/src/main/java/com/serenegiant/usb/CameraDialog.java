@@ -29,7 +29,6 @@ import java.util.List;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.DialogFragment;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.hardware.usb.UsbDevice;
@@ -42,6 +41,9 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.CheckedTextView;
 import android.widget.Spinner;
+
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentActivity;
 
 import com.serenegiant.usb.DeviceFilter;
 import com.serenegiant.usb.USBMonitor;
@@ -61,10 +63,10 @@ public class CameraDialog extends DialogFragment {
 	 * @param parent FragmentActivity
 	 * @return
 	 */
-	public static CameraDialog showDialog(final Activity parent/* add parameters here if you need */) {
+	public static CameraDialog showDialog(final FragmentActivity parent/* add parameters here if you need */) {
 		CameraDialog dialog = newInstance(/* add parameters here if you need */);
 		try {
-			dialog.show(parent.getFragmentManager(), TAG);
+			dialog.show(parent.getSupportFragmentManager(), TAG);
 		} catch (final IllegalStateException e) {
 			dialog = null;
 		}

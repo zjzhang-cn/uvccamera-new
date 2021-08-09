@@ -832,7 +832,7 @@ void LIBUSB_CALL _uvc_stream_callback(struct libusb_transfer *transfer) {
     } else {
       /* This is an isochronous mode transfer, so each packet has a payload transfer */
       int packet_id;
-      FILE *file = fopen("/sdcard/v3.bin","a+");
+
       for (packet_id = 0; packet_id < transfer->num_iso_packets; ++packet_id) {
         uint8_t *pktbuf;
         struct libusb_iso_packet_descriptor *pkt;
@@ -848,12 +848,8 @@ void LIBUSB_CALL _uvc_stream_callback(struct libusb_transfer *transfer) {
         if (pkt->actual_length == 0){
             continue;
         }
-        fwrite(&pkt->actual_length,1,sizeof(pkt->actual_length),file);
-        fwrite(pktbuf,1,pkt->actual_length,file);
         _uvc_process_payload(strmh, pktbuf, pkt->actual_length);
       }
-      fflush(file);
-      fclose(file);
     }
     break;
   case LIBUSB_TRANSFER_CANCELLED: 
