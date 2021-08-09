@@ -570,6 +570,10 @@ uvc_error_t uvc_mjpeg2yuv(void *handler, uvc_frame_t *in, uvc_frame_t *out) {
 	*/
 	int width,height, jpegSubsamp, jpegColorspace;
 	int r = tjDecompressHeader3((tjhandle)handler,in->data, in->data_bytes, &width,&height,&jpegSubsamp,&jpegColorspace);
+	if (r < 0){
+	    LOGE("tjDecompressHeader3 err.%s", tjGetErrorStr());
+	    return r;
+	}
     size_t size = tjBufSizeYUV2(width,4,height,jpegSubsamp);
     if (size > out->data_bytes){
 	    LOGI("frame too small.need:%d,actual:%d",size,out->data_bytes);
