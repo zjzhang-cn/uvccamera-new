@@ -502,7 +502,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 	ENTER();
 	result = uvc_get_stream_ctrl_format_size(mDeviceHandle, ctrl,
 		!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
-		requestWidth, requestHeight, requestMaxFps
+		requestWidth, requestHeight, 0
 	);
 	if (LIKELY(!result)) {
 #if LOCAL_DEBUG

@@ -477,17 +477,21 @@ uvc_error_t uvc_get_stream_ctrl_format_size(
     DL_FOREACH(stream_if->format_descs, format) {
       uvc_frame_desc_t *frame;
 
-      if (!_uvc_frame_format_matches_guid(cf, format->guidFormat))
+      if (!_uvc_frame_format_matches_guid(cf, format->guidFormat)){
+        UVC_DEBUG("jump over %s", format->guidFormat);
         continue;
+      }
 
       DL_FOREACH(format->frame_descs, frame) {
-        if (frame->wWidth != width || frame->wHeight != height)
+        if (frame->wWidth != width || frame->wHeight != height){
+            UVC_DEBUG("jump over %dX%d", frame->wWidth,frame->wHeight);
           continue;
+        }
 
         uint32_t *interval;
 
         ctrl->bInterfaceNumber = stream_if->bInterfaceNumber;
-        UVC_DEBUG("claiming streaming interface %d", stream_if->bInterfaceNumber );
+        UVC_DEBUG("claiming streaming interface %d, %dX%d", stream_if->bInterfaceNumber,width,height);
         uvc_claim_if(devh, ctrl->bInterfaceNumber);
         /* get the max values */
         uvc_query_stream_ctrl( devh, ctrl, 1, UVC_GET_DEF);
@@ -506,6 +510,7 @@ uvc_error_t uvc_get_stream_ctrl_format_size(
             }
           }
         } else {
+          if (fps == 0) fps = 30;
           uint32_t interval_100ns = 10000000 / fps;
           uint32_t interval_offset = interval_100ns - frame->dwMinFrameInterval;
 
