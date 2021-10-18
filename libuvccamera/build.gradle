@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
 /*
  *  UVCCamera
  *  library and sample to access to UVC web camera on non-rooted Android device
@@ -88,6 +89,8 @@ dependencies {
 
 	implementation 'androidx.legacy:legacy-support-v4:1.0.0'
 	implementation 'androidx.annotation:annotation:1.0.0'
+    implementation "androidx.core:core-ktx:1.6.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 //    implementation project(path: ':usbCameraCommon')
 }
 
@@ -122,4 +125,7 @@ task sourcesJar(type: Jar) {
 artifacts {
 //    archives javadocJar
 	archives sourcesJar
+}
+repositories {
+    mavenCentral()
 }
