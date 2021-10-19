@@ -5,9 +5,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.TextureView;
 import android.widget.TextView;
 
+import com.example.simpleuvccamera.widget.AspectRatioFrameLayout;
+import com.example.simpleuvccamera.widget.MyGLSurfaceView;
 import com.serenegiant.usb.DeviceFilter;
 import com.serenegiant.usb.IFrameCallback;
 import com.serenegiant.usb.USBMonitor;
@@ -21,7 +22,8 @@ public class MainActivity extends AppCompatActivity implements IFrameCallback {
     private USBMonitor mUSBMonitor;
     private UVCCamera mUVCCamera;
     public static final String TAG = "MainActivity";
-    private TextureView textureView;
+    private MyGLSurfaceView glSurfaceView;
+    AspectRatioFrameLayout container;
     private TextView frameNumbView;
     int frameNB = 0;
     private boolean mStart;
@@ -30,7 +32,8 @@ public class MainActivity extends AppCompatActivity implements IFrameCallback {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        textureView = findViewById(R.id.texture);
+        container = findViewById(R.id.texture_container);
+        glSurfaceView = findViewById(R.id.my_gl_surface_view);
         frameNumbView = findViewById(R.id.tv_video_frames_nb);
         mUSBMonitor = new USBMonitor(this, new SimpleUSBMonitorListener(){
             @Override
@@ -66,12 +69,10 @@ public class MainActivity extends AppCompatActivity implements IFrameCallback {
                     final UVCCamera camera = new UVCCamera();
                     camera.open(ctrlBlock);
 					mUVCCamera = camera;
-					if (textureView.isAvailable()){
-					    mUVCCamera.setPreviewTexture(textureView.getSurfaceTexture());
-                    }
 					mUVCCamera.setPreviewSize(1280,720,UVCCamera.PIXEL_FORMAT_YUV420SP);
                     mUVCCamera.setFrameCallback(MainActivity.this, UVCCamera.PIXEL_FORMAT_YUV420SP);
                     mUVCCamera.startPreview();
+                    glSurfaceView.setYuvDataSize(1280,720);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
@@ -87,6 +88,7 @@ public class MainActivity extends AppCompatActivity implements IFrameCallback {
 
         mUSBMonitor.setDeviceFilter(DeviceFilter.getDeviceFilters(this, R.xml.device_filter));
         mUSBMonitor.register();
+        container.setAspectSize(1280,720);
     }
 
 
@@ -100,6 +102,7 @@ public class MainActivity extends AppCompatActivity implements IFrameCallback {
     @Override
     public void onFrame(ByteBuffer frame) {
         frameNB++;
+        glSurfaceView.feedData(frame);
         if (mStart)
             runOnUiThread(() -> frameNumbView.setText("recv " + frameNB + " frames"));
     }

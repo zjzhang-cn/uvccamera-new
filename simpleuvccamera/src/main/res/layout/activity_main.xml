@@ -15,10 +15,10 @@
         android:id="@+id/texture_container"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextureView
-            android:id="@+id/texture"
+        <com.example.simpleuvccamera.widget.MyGLSurfaceView
+            android:id="@+id/my_gl_surface_view"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"></TextureView>
+            android:layout_height="match_parent"></com.example.simpleuvccamera.widget.MyGLSurfaceView>
     </com.example.simpleuvccamera.widget.AspectRatioFrameLayout>
 
 
