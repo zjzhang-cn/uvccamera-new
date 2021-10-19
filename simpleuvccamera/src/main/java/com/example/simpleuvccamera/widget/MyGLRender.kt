@@ -66,7 +66,7 @@ class MyGLRenderer : GLSurfaceView.Renderer {
 
         // this projection matrix is applied to object coordinates
         // in the onDrawFrame() method
-        Matrix.frustumM(projectionMatrix, 0, -ratio, ratio, -1f, 1f, 3f, 7f)
+        Matrix.frustumM(projectionMatrix, 0, -1f, 1f, -1f, 1f, 3f, 7f)
 
         // Set the camera position (View matrix)
         Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, -3f, 0f, 0f, 0f, 1.0f, 0.0f, 0.0f)
