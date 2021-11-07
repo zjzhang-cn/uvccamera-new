@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">SimpleUVCCamera</string>
+    <string name="eject_camera">eject camera</string>
+    <string name="camera_safely_ejected_now">The camera can now be safely ejected</string>
 </resources>

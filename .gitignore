@@ -57,3 +57,4 @@ libuvccamera/src/main/libs
 /usbCameraTest4/src/main/libs/arm64-v8a/gdbserver
 /usbCameraTest4/src/main/libs/armeabi-v7a/gdb.setup
 /usbCameraTest4/src/main/libs/armeabi-v7a/gdbserver
+gly.keystore

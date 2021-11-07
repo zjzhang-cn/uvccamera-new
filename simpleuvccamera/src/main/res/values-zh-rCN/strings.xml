@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="eject_camera">拔出摄像头</string>
+    <string name="camera_safely_ejected_now">摄像头现在可以安全拔出</string>
+</resources>

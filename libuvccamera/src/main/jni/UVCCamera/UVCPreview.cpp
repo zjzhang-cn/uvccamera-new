@@ -486,10 +486,13 @@ void *UVCPreview::preview_thread_func(void *vptr_args) {
 	ENTER();
 	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
 	if (LIKELY(preview)) {
-		uvc_stream_ctrl_t ctrl;
-		result = preview->prepare_preview(&ctrl);
-		if (LIKELY(!result)) {
-			preview->do_preview(&ctrl);
+	    while(preview->isRunning()){
+            uvc_stream_ctrl_t ctrl;
+            result = preview->prepare_preview(&ctrl);
+            if (LIKELY(!result)) {
+                preview->do_preview(&ctrl);
+            }
+            LOGI("do_preview failed..retrying...");
 		}
 	}
 	PRE_EXIT();
@@ -579,7 +582,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				// frame_mjpeg = waitPreviewFrame();
 
 	            uvc_frame_t *frame_mjpeg = NULL;
-				result = uvc_stream_get_frame(stmh,&frame_mjpeg,30000000);
+				result = uvc_stream_get_frame(stmh,&frame_mjpeg,5000000);
 				if (LIKELY(result)){
 				    LOGW("uvc_stream_get_frame failed:%d", result);
 				    break;

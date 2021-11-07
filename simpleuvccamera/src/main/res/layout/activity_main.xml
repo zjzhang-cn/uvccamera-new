@@ -30,4 +30,14 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/texture_container" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:onClick="onEjectCamera"
+        android:layout_marginBottom="@dimen/vertical_margin"
+        android:text="@string/eject_camera"></Button>
 </androidx.constraintlayout.widget.ConstraintLayout>
