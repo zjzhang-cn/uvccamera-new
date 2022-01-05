@@ -30,6 +30,12 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
     private lateinit var handler: Handler
     var frameNB = 0
     private var mStart = false
+    private val width = 1920
+    private val height = 1080
+    //private val width = 2560
+    //private val height = 1440
+    //private val width = 3840
+    //private val height = 2160
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -42,7 +48,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
         glSurfaceView = findViewById(R.id.my_gl_surface_view)
         frameNumbView = findViewById(R.id.tv_video_frames_nb)
 
-        container.setAspectSize(1280, 720)
+        container.setAspectSize(width, height)
         var hasPermission = true
         if (Build.VERSION.SDK_INT>=28) {
             if (ActivityCompat.checkSelfPermission(this,
@@ -97,8 +103,8 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
                         }
                     }
                 }
-                glSurfaceView.setYuvDataSize(1280, 720)
-                glSurfaceView.setDisplayOrientation(90)
+                glSurfaceView.setYuvDataSize(width, height)
+                glSurfaceView.setDisplayOrientation(0)
             }
         })
         mUSBMonitor?.setDeviceFilter(DeviceFilter.getDeviceFilters(this, R.xml.device_filter))
@@ -117,7 +123,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             if (camera != null){
                 Log.w(TAG,"resuse a device...");
                 Log.i(TAG, "setPreviewSize ...")
-                camera.setPreviewSize(1280, 720, UVCCamera.PIXEL_FORMAT_YUV420SP)
+                camera.setPreviewSize(width, height, UVCCamera.PIXEL_FORMAT_YUV420SP)
                 Log.i(TAG, "setFrameCallback ...")
                 camera.setFrameCallback(this@MainActivity, UVCCamera.PIXEL_FORMAT_YUV420SP)
                 Log.i(TAG, "startPreview ...")
@@ -134,7 +140,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             camera.open(ctrlBlock)
             mUVCCamera = camera
             Log.i(TAG, "setPreviewSize ...")
-            camera.setPreviewSize(1280, 720, UVCCamera.PIXEL_FORMAT_YUV420SP)
+            camera.setPreviewSize(width, height, UVCCamera.PIXEL_FORMAT_YUV420SP)
             Log.i(TAG, "setFrameCallback ...")
             camera.setFrameCallback(this@MainActivity, UVCCamera.PIXEL_FORMAT_YUV420SP)
             Log.i(TAG, "startPreview ...")

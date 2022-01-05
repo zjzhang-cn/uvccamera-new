@@ -42,6 +42,9 @@ class MyGLRenderer : GLSurfaceView.Renderer {
     // 标识GLSurfaceView是否准备好
     private var hasVisibility = false
 
+    // 显示旋转角度（逆时针），有效值是（0, 90, 180, and 270.）
+    private var degrees = 0
+
     //  Called once to set up the view's OpenGL ES environment.
     override fun onSurfaceCreated(unused: GL10?, config: EGLConfig?) {
         // Set the background frame color
@@ -59,9 +62,6 @@ class MyGLRenderer : GLSurfaceView.Renderer {
 
         mScreenWidth = width
         mScreenHeight = height
-
-        mScreenWidth = width
-        mScreenHeight = height
         val ratio: Float = width.toFloat() / height.toFloat()
 
         // this projection matrix is applied to object coordinates
@@ -69,7 +69,7 @@ class MyGLRenderer : GLSurfaceView.Renderer {
         Matrix.frustumM(projectionMatrix, 0, -1f, 1f, -1f, 1f, 3f, 7f)
 
         // Set the camera position (View matrix)
-        Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, -3f, 0f, 0f, 0f, 1.0f, 0.0f, 0.0f)
+        reSetDisplayOrientation()
 
         if (mVideoWidth > 0 && mVideoHeight > 0) {
             createBuffers(mVideoWidth, mVideoHeight)
@@ -112,16 +112,27 @@ class MyGLRenderer : GLSurfaceView.Renderer {
      */
     fun setDisplayOrientation(degrees: Int) {
         // Set the camera position (View matrix)
-        if (degrees == 0) {
-            Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, -3f, 0f, 0f, 0f, 1.0f, 0.0f, 0.0f)
-        } else if (degrees == 90) {
-            Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, -3f, 0f, 0f, 0f, 0.0f, 1.0f, 0.0f)
-        } else if (degrees == 180) {
-            Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, -3f, 0f, 0f, 0f, -1.0f, 0.0f, 0.0f)
-        } else if (degrees == 270) {
-            Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, -3f, 0f, 0f, 0f, 0.0f, -1.0f, 0.0f)
-        } else {
-            Log.e(TAG, "degrees pram must be in (0, 90, 180, 270) ")
+        this.degrees = degrees
+        reSetDisplayOrientation()
+    }
+
+    private fun reSetDisplayOrientation(){
+        when (degrees) {
+            0 -> {
+                Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0.0f, 1.0f, 0.0f)
+            }
+            90 -> {
+                Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 1.0f, 0.0f, 0.0f)
+            }
+            180 -> {
+                Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, -1.0f, 0.0f, 0.0f)
+            }
+            270 -> {
+                Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0.0f, -1.0f, 0.0f)
+            }
+            else -> {
+                Log.e(TAG, "degrees pram must be in (0, 90, 180, 270) ")
+            }
         }
     }
 
