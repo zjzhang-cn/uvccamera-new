@@ -35,6 +35,10 @@ android {
             storePassword storePassword
         }
     }
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
 }
 
 dependencies {
