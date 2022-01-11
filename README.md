@@ -4,7 +4,7 @@ this project is base on @saki(t_saki@serenegiant.com)'s UVCCamera project https:
 - Migrate to android X;
 - Optimize some libusb's call, improve compatibility;
 - Change the UVCPreview thread from asynchronous to synchronous;
-- Solve a problem which `stopPreview` may blocking;
+- Solve uvccamera stopPreview blocking;
 - Remove the requirement of surface when fetching YUV;
 - Use libYUV to convert mjpeg to YUV to improve efficiency.
 
