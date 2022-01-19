@@ -100,7 +100,7 @@ class MyGLRenderer : GLSurfaceView.Renderer {
                 try {
                     mProgram.drawTexture(vPMatrix, type)
                 } catch (e: Exception) {
-                    Log.w(TAG, e.message)
+                    Log.w(TAG, e.message?:"")
                 }
             }
         }
