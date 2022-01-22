@@ -478,8 +478,8 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 	ENTER();
 
 
-#define LOG_TO_FILE
-#ifdef LOG_TO_FILE
+#define LOG_TO_FILE 0
+#if LOG_TO_FILE
     FILE *f = fopen("/sdcard/uvc_dialog.txt","w");
     uvc_print_diag(mDeviceHandle, f);
 	fflush(f);
@@ -555,7 +555,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 		LOGE("frame_format unknown.subType=%d!", format->bDescriptorSubtype);
 		result = UVC_ERROR_OTHER;
 		RETURN(result, int);
-	}  
+	}
 	result = uvc_get_stream_ctrl_format_size(mDeviceHandle, ctrl,
 	    frame_format,requestWidth, requestHeight, 0
 	);
@@ -615,14 +615,14 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 
 	uvc_stream_handle_t *stmh;
 	uvc_error_t result = uvc_start_streaming_bandwidth2(mDeviceHandle, ctrl, &stmh);
-	
-    
+
+
 	if (LIKELY(result)) {
 		LOGE("failed to start streaming:%d",result);
     	vm->DetachCurrentThread();
 		return;
 	}
-		
+
 	uvc_frame_t *frame = NULL;
 	// MJPEG mode
 	tjhandle handler = tjInitDecompress();
@@ -641,6 +641,8 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			LOGD("uvc_stream_get_frame timeout", result);
 			continue;
 		}
+		const uint32_t width = src_frame->width;
+		const uint32_t height = src_frame->height;
 		if (frame_format == UVC_FRAME_FORMAT_MJPEG){
 			if (!LIKELY(frame)){
 				frame = get_frame(src_frame->width*src_frame->height*2);
@@ -655,8 +657,6 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				LOGD("uvc_mjpeg2yuv failed.%d\n", result);
 				continue;
 			}
-			const uint32_t width = frame->width;
-			const uint32_t height = frame->height;
 			i420 = get_frame(width*height*3/2);
 			libyuv::I422ToI420(
 				Y(frame->data), width,
@@ -669,10 +669,15 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			);
 		}else if (frame_format == UVC_FRAME_FORMAT_NV12){
 			i420 = get_frame(src_frame->data_bytes);
-			uvc_duplicate_frame(src_frame,i420);
+			libyuv::NV12ToI420(
+				Y(src_frame->data), width,
+				U(src_frame->data), width,
+				DY(i420->data), width,
+				DU(i420->data), (width+1)/2,
+				DV(i420->data),(width+1)/2,
+				width, height
+			);
 		}else if (frame_format == UVC_FRAME_FORMAT_YUYV){
-			const uint32_t width = src_frame->width;
-			const uint32_t height = src_frame->height;
 			i420 = get_frame(width*height*3/2);
 			libyuv::YUY2ToI420(
 				Y(src_frame->data), width,
@@ -682,8 +687,6 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 				width, height
 			);
 		}else if (frame_format == UVC_FRAME_FORMAT_UYVY){
-			const uint32_t width = src_frame->width;
-			const uint32_t height = src_frame->height;
 			i420 = get_frame(width*height*3/2);
 			libyuv::UYVYToI420(
 				Y(src_frame->data), width,
@@ -701,7 +704,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			env->DeleteLocalRef(buf);
 		}
 		pthread_mutex_unlock(&capture_mutex);
-		if (LIKELY(i420)){
+		if (LIKELY(i420) && src_frame != i420){
 			uvc_free_frame(i420);
 		}
 		//if (total++ >100)
