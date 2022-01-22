@@ -2,4 +2,8 @@
 <resources>
     <string name="eject_camera">拔出摄像头</string>
     <string name="camera_safely_ejected_now">摄像头现在可以安全拔出</string>
+    <string name="camera_info">摄像头信息</string>
+    <string name="no_camera">没有插入摄像头</string>
+    <string name="video_formats">视频格式:</string>
+    <string name="video_resolutions">分辨率:</string>
 </resources>

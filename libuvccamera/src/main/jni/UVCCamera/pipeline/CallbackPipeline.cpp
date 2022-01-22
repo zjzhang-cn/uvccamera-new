@@ -242,14 +242,14 @@ static jint nativeStop(JNIEnv *env, jobject thiz,
 }
 
 static jint nativeSetFrameCallback(JNIEnv *env, jobject thiz,
-	ID_TYPE id_pipeline, jobject jIFrameCallback, jint pixel_format) {
+	ID_TYPE id_pipeline, jobject jIFrameCallback) {
 
 	jint result = JNI_ERR;
 	ENTER();
 	CallbackPipeline *pipeline = reinterpret_cast<CallbackPipeline *>(id_pipeline);
 	if (LIKELY(pipeline)) {
 		jobject frame_callback_obj = env->NewGlobalRef(jIFrameCallback);
-		result = pipeline->setFrameCallback(env, frame_callback_obj, pixel_format);
+		result = pipeline->setFrameCallback(env, frame_callback_obj);
 	}
 	RETURN(result, jint);
 }

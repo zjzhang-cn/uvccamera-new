@@ -8,34 +8,41 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
+import android.view.View
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.fragment.app.FragmentResultListener
 import androidx.lifecycle.Lifecycle
+import com.example.simpleuvccamera.fragment.CameraInfoFragment
 import com.example.simpleuvccamera.widget.AspectRatioFrameLayout
 import com.example.simpleuvccamera.widget.MyGLSurfaceView
 import com.serenegiant.usb.DeviceFilter
 import com.serenegiant.usb.IFrameCallback
 import com.serenegiant.usb.USBMonitor
 import com.serenegiant.usb.UVCCamera
+import com.serenegiant.utils.FrameRateStat
+import org.json.JSONArray
+import org.json.JSONObject
+import timber.log.Timber
 import java.nio.ByteBuffer
 
 class MainActivity : AppCompatActivity(), IFrameCallback {
+
     private var mUSBMonitor: USBMonitor? = null
     private var mUVCCamera: UVCCamera? = null
+    private lateinit var cameraInfo:JSONObject
     private lateinit var glSurfaceView: MyGLSurfaceView
     lateinit var container: AspectRatioFrameLayout
     private lateinit var frameNumbView: TextView
     private lateinit var handler: Handler
     var frameNB = 0
     private var mStart = false
-    private val width = 1920
-    private val height = 1080
-    //private val width = 2560
-    //private val height = 1440
-    //private val width = 3840
-    //private val height = 2160
+    private var width = 1280
+    private var height = 720
+    private var formatIndex: Int = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -70,13 +77,13 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
     private fun initUSBMonitor() {
         mUSBMonitor = USBMonitor(this, object : SimpleUSBMonitorListener() {
             override fun onAttach(device: UsbDevice) {
-                Log.i(TAG, "onAttach:" + device.deviceName)
+                Timber.i("onAttach:" + device.deviceName)
                 val devices = mUSBMonitor?.deviceList?:ArrayList()
                 if (devices.contains(device)) {
-                    Log.i(TAG, "device list contains device $device. requestPermission.")
+                    Timber.i("device list contains device $device. requestPermission.")
                     mUSBMonitor?.requestPermission(device)
                 } else {
-                    Log.i(TAG, "device list not contains device :$device")
+                    Timber.i("device list not contains device :$device")
                 }
             }
 
@@ -85,6 +92,10 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
                 handler.post {
                     mUVCCamera?.stopPreview()
                     mUVCCamera?.destroy()
+                }
+                runOnUiThread {
+                    findViewById<View>(R.id.camera_group).visibility = View.GONE
+                    findViewById<View>(R.id.no_camera_group).visibility = View.VISIBLE
                 }
             }
 
@@ -97,14 +108,14 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
                 mStart = true
                 runOnUiThread {
                     if (lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)) {
+                        glSurfaceView.setYuvDataSize(width, height)
+                        glSurfaceView.setDisplayOrientation(0)
                         frameNumbView.setText("preview start...")
                         handler.post {
                             openDevice(device,ctrlBlock,createNew)
                         }
                     }
                 }
-                glSurfaceView.setYuvDataSize(width, height)
-                glSurfaceView.setDisplayOrientation(0)
             }
         })
         mUSBMonitor?.setDeviceFilter(DeviceFilter.getDeviceFilters(this, R.xml.device_filter))
@@ -115,20 +126,20 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
         val devices = mUSBMonitor?.deviceList?:ArrayList()
         if (devices.contains(device)) {
         } else {
-            Log.i(TAG, "device list not contains device $device")
+            Timber.i("device list not contains device $device")
             return
         }
         if (!createNew){
             val camera = mUVCCamera
             if (camera != null){
                 Log.w(TAG,"resuse a device...");
-                Log.i(TAG, "setPreviewSize ...")
-                camera.setPreviewSize(width, height, UVCCamera.PIXEL_FORMAT_YUV420SP)
-                Log.i(TAG, "setFrameCallback ...")
-                camera.setFrameCallback(this@MainActivity, UVCCamera.PIXEL_FORMAT_YUV420SP)
-                Log.i(TAG, "startPreview ...")
+                Timber.i("setPreviewSize ...")
+                camera.setPreviewSize(width, height,1)
+                Timber.i("setFrameCallback ...")
+                camera.setFrameCallback(this@MainActivity)
+                Timber.i("startPreview ...")
                 camera.startPreview()
-                Log.i(TAG, "startPreview done...")
+                Timber.i("startPreview done...")
                 return
             }else{
                 throw IllegalStateException("resuse a device with null camera...")
@@ -136,18 +147,49 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
         }
         try {
             val camera = UVCCamera()
-            Log.i(TAG, "open camera...")
+            Timber.i("open camera...")
             camera.open(ctrlBlock)
             mUVCCamera = camera
-            Log.i(TAG, "setPreviewSize ...")
-            camera.setPreviewSize(width, height, UVCCamera.PIXEL_FORMAT_YUV420SP)
-            Log.i(TAG, "setFrameCallback ...")
-            camera.setFrameCallback(this@MainActivity, UVCCamera.PIXEL_FORMAT_YUV420SP)
-            Log.i(TAG, "startPreview ...")
+            var jsonStr = camera.cameraSpec
+            if (jsonStr == "") throw IllegalStateException("cameraSpec not invalid.")
+            Timber.i(jsonStr)
+            cameraInfo = JSONObject(jsonStr)
+            getDefaultWithHeightAndFormatFromCameraInfo(cameraInfo)
+            Timber.i("setPreviewSize ...")
+            camera.setPreviewSize(width, height,formatIndex)
+            Timber.i("setFrameCallback ...")
+            camera.setFrameCallback(this@MainActivity)
+            Timber.i("startPreview ...")
             camera.startPreview()
-            Log.i(TAG, "startPreview done...")
+            Timber.i("startPreview done...")
+            runOnUiThread {
+                findViewById<View>(R.id.camera_group).visibility = View.VISIBLE
+                findViewById<View>(R.id.no_camera_group).visibility = View.GONE
+            }
         } catch (e: Throwable) {
             runOnUiThread { frameNumbView.setText("err:${e.message}") }
+        }
+    }
+
+    private fun getDefaultWithHeightAndFormatFromCameraInfo(obj:JSONObject) {
+        val formats = obj.getJSONArray("formats")
+        if (formats.length() > 0){
+            val fmt = formats[0] as JSONObject
+            val index = fmt.getInt("index")
+            val size = fmt.getJSONArray("size")
+            val default = fmt.getInt("default")
+            val resolution = size[default] as String
+            val splite = resolution.split("x")
+            var w = splite[0].toInt()
+            var h = splite[1].toInt()
+            width = w
+            height = h
+            formatIndex = index
+
+            runOnUiThread {
+                glSurfaceView.setYuvDataSize(width, height)
+                glSurfaceView.setDisplayOrientation(0)
+            }
         }
     }
 
@@ -182,14 +224,15 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
     override fun onFrame(frame: ByteBuffer) {
         frameNB++
         glSurfaceView!!.feedData(frame)
-        if (mStart) runOnUiThread { frameNumbView.text = "recv $frameNB frames" }
+        if (mStart) runOnUiThread { frameNumbView.text =
+            "recv $frameNB frames FPS:(${FrameRateStat.stat("FrameCB")})" }
     }
 
     companion object {
         const val TAG = "MainActivity"
     }
 
-    fun onEjectCamera(view: android.view.View) {
+    fun onEjectCamera(v: View) {
         handler.post {
             if (mStart) {
                 mUVCCamera?.stopPreview()
@@ -203,6 +246,42 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             else {
                 mStart = true
                 mUVCCamera?.startPreview()
+            }
+        }
+    }
+
+    fun onCameraInfo(view: View) {
+        handler.post {
+            val camera = mUVCCamera?:return@post
+            try {
+                var jsonStr = camera.cameraSpec
+                if (jsonStr == "") throw IllegalStateException("cameraSpec not invalid.")
+                Timber.i(jsonStr)
+                cameraInfo = JSONObject(jsonStr)
+                val formats = cameraInfo.getJSONArray("formats").toString()
+                runOnUiThread {
+                    supportFragmentManager.setFragmentResultListener("CameraInfo",this
+                    ) { requestKey, result ->
+                        var fmtIndex = result.getInt("formatIndex")
+                        var resolution = result.getString("resolution")!!
+                        val splite = resolution.split("x")
+                        var w = splite[0].toInt()
+                        var h = splite[1].toInt()
+                        width = w
+                        height = h
+                        formatIndex = fmtIndex
+
+                        handler.post {  // change camera's resolution..
+                            camera.stopPreview()
+                            camera.setPreviewSize(width, height,fmtIndex)
+                            camera.startPreview()
+                        }
+                    }
+                    CameraInfoFragment.newInstance(formats)
+                        .show(supportFragmentManager,null)
+                }
+            }catch (e:Throwable){
+
             }
         }
     }

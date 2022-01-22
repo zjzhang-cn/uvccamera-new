@@ -1,3 +1,5 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
 plugins {
     id 'com.android.application'
 }
@@ -23,6 +25,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    sourceSets {
+        main {
+            jniLibs.srcDirs += ['../libuvccamera/src/main/libs','../libuvccamera/src/main/jni/libyuv/libs']
+            jni.srcDirs = ['../libuvccamera/src/main/jni']
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -41,11 +49,35 @@ android {
     }
 }
 
+tasks.withType(JavaCompile) {
+	compileTask -> compileTask.dependsOn ndkBuild
+}
+
+String getNdkBuildPath() {
+    Properties properties = new Properties()
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    def ndkBuildingDir = properties.getProperty("ndk.dir")
+    def ndkBuildPath = ndkBuildingDir
+    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+        ndkBuildPath = ndkBuildingDir + '/ndk-build.cmd'
+    } else {
+        ndkBuildPath = ndkBuildingDir + '/ndk-build'
+    }
+    return ndkBuildPath
+}
+
+task ndkBuild(type: Exec, description: 'Compile JNI source via NDK') {
+    println('executing ndkBuild')
+    def ndkBuildPath = getNdkBuildPath();
+    commandLine ndkBuildPath, '-j8', '-C', file('../libuvccamera/src/main').absolutePath
+}
+
 dependencies {
 
     implementation 'androidx.appcompat:appcompat:1.3.1'
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.1'
+    implementation 'com.jakewharton.timber:timber:5.0.1'
     implementation project(':libuvccamera')
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

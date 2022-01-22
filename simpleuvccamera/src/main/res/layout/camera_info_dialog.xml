@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:orientation="vertical"
+    android:minHeight="280dp"
+    android:minWidth="240dp"
+    android:paddingHorizontal="@dimen/horizontal_margin"
+    android:paddingVertical="@dimen/vertical_margin"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:text="@string/video_formats"
+        android:layout_height="wrap_content">
+
+    </TextView>
+    <androidx.appcompat.widget.AppCompatSpinner
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="parent"
+        android:id="@+id/sp_formats"
+        android:layout_marginTop="@dimen/vertical_margin"
+        app:layout_constraintStart_toStartOf="parent">
+
+    </androidx.appcompat.widget.AppCompatSpinner>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:text="@string/video_resolutions"
+        android:layout_height="wrap_content">
+
+    </TextView>
+    <androidx.appcompat.widget.AppCompatSpinner
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="parent"
+        android:id="@+id/sp_resolution"
+        android:layout_marginTop="@dimen/vertical_margin"
+        app:layout_constraintStart_toStartOf="parent">
+
+    </androidx.appcompat.widget.AppCompatSpinner>
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_marginTop="@dimen/vertical_margin"
+        android:id="@+id/ok"
+        android:text="ok"
+        android:layout_height="wrap_content"></Button>
+</LinearLayout>

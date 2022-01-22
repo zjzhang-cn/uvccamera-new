@@ -206,7 +206,7 @@ int UVCPreview::setPreviewDisplay(ANativeWindow *preview_window) {
 	RETURN(0, int);
 }
 
-int UVCPreview::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format) {
+int UVCPreview::setFrameCallback(JNIEnv *env, jobject frame_callback_obj) {
 
 	ENTER();
 	pthread_mutex_lock(&capture_mutex);
@@ -240,10 +240,6 @@ int UVCPreview::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pi
 					mFrameCallbackObj = frame_callback_obj = NULL;
 				}
 			}
-		}
-		if (frame_callback_obj) {
-			mPixelFormat = pixel_format;
-			callbackPixelFormatChanged();
 		}
 	}
 	pthread_mutex_unlock(&capture_mutex);
@@ -647,6 +643,8 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			if (!LIKELY(frame)){
 				frame = get_frame(src_frame->width*src_frame->height*2);
 				LOGD("alloc middle frame.");
+			}else{
+				frame->data_bytes = src_frame->width*src_frame->height*2;
 			}
 			if (!LIKELY(frame)){
 				LOGD("alloc frame failed");
@@ -680,7 +678,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 		}else if (frame_format == UVC_FRAME_FORMAT_YUYV){
 			i420 = get_frame(width*height*3/2);
 			libyuv::YUY2ToI420(
-				Y(src_frame->data), width,
+				Y(src_frame->data), width*2,
 				DY(i420->data), width,
 				DU(i420->data), (width+1)/2,
 				DV(i420->data),(width+1)/2,
@@ -689,7 +687,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 		}else if (frame_format == UVC_FRAME_FORMAT_UYVY){
 			i420 = get_frame(width*height*3/2);
 			libyuv::UYVYToI420(
-				Y(src_frame->data), width,
+				Y(src_frame->data), width*2,
 				DY(i420->data), width,
 				DU(i420->data), (width+1)/2,
 				DV(i420->data),(width+1)/2,

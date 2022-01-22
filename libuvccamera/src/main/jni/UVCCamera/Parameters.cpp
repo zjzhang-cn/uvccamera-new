@@ -358,6 +358,7 @@ char *UVCDiags::getSupportedSize(const uvc_device_handle_t *deviceHandle) {
 				++stream_idx;
 				uvc_format_desc_t *fmt_desc;
 				uvc_frame_desc_t *frame_desc;
+				char forcc_str[5] = {0};
 				DL_FOREACH(stream_if->format_descs, fmt_desc)
 				{
 					writer.StartObject();
@@ -367,6 +368,8 @@ char *UVCDiags::getSupportedSize(const uvc_device_handle_t *deviceHandle) {
 						case UVC_VS_FORMAT_MJPEG:
 							write(writer, "index", fmt_desc->bFormatIndex);
 							write(writer, "type", fmt_desc->bDescriptorSubtype);
+							sprintf(forcc_str,"%4s", fmt_desc->fourccFormat);
+							write(writer, "fourcc", forcc_str);
 							write(writer, "default", fmt_desc->bDefaultFrameIndex);
 							writer.String("size");
 							writer.StartArray();

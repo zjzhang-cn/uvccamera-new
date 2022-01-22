@@ -117,7 +117,7 @@ public:
 	inline const bool isRunning() const;
 	int setPreviewSize(int width, int height,int fi);
 	int setPreviewDisplay(ANativeWindow *preview_window);
-	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
+	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj);
 	int startPreview();
 	int stopPreview();
 	inline const bool isCapturing() const;

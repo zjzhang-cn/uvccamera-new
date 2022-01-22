@@ -576,7 +576,7 @@ uvc_error_t uvc_mjpeg2yuv(void *handler, uvc_frame_t *in, uvc_frame_t *out) {
 	}
     size_t size = tjBufSizeYUV2(width,4,height,jpegSubsamp);
     if (size > out->data_bytes){
-	    LOGI("frame too small.need:%d,actual:%d",size,out->data_bytes);
+	    LOGI("frame too small.width:%d,height:%d,jpegSubsamp:%d,need:%d,actual:%d",width, height, jpegSubsamp,size,out->data_bytes);
         return -1;
     }
 	out->width = width;
