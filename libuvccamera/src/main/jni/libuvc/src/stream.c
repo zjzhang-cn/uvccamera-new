@@ -510,22 +510,12 @@ uvc_error_t uvc_get_stream_ctrl_format_size(
             }
           }
         } else {
-          if (fps == 0) fps = 30;
-          uint32_t interval_100ns = 10000000 / fps;
-          uint32_t interval_offset = interval_100ns - frame->dwMinFrameInterval;
+          ctrl->bmHint = (1 << 0);
+          ctrl->bFormatIndex = format->bFormatIndex;
+          ctrl->bFrameIndex = frame->bFrameIndex;
+          ctrl->dwFrameInterval = frame->dwMaxFrameInterval;
 
-          if (interval_100ns >= frame->dwMinFrameInterval
-              && interval_100ns <= frame->dwMaxFrameInterval
-              && !(interval_offset
-                   && (interval_offset % frame->dwFrameIntervalStep))) {
-
-            ctrl->bmHint = (1 << 0);
-            ctrl->bFormatIndex = format->bFormatIndex;
-            ctrl->bFrameIndex = frame->bFrameIndex;
-            ctrl->dwFrameInterval = interval_100ns;
-
-            goto found;
-          }
+          goto found;
         }
       }
     }

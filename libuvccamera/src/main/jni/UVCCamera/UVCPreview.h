@@ -58,11 +58,11 @@ private:
 	uvc_device_handle_t *mDeviceHandle;
 	ANativeWindow *mPreviewWindow;
 	volatile bool mIsRunning;
-	int requestWidth, requestHeight, requestMode;
+	int requestWidth, requestHeight, formatIndex;
+	uvc_frame_format frame_format;
 	int requestMinFps, requestMaxFps;
 	float requestBandwidth;
 	int frameWidth, frameHeight;
-	int frameMode;
 	size_t frameBytes;
 	pthread_t preview_thread;
 	pthread_mutex_t preview_mutex;
@@ -109,12 +109,13 @@ private:
 	void do_capture_idle_loop(JNIEnv *env);
 	void do_capture_callback(JNIEnv *env, uvc_frame_t *frame);
 	void callbackPixelFormatChanged();
+	void get_uvc_format(uvc_format_desc_t **fmt);
 public:
 	UVCPreview(uvc_device_handle_t *devh);
 	~UVCPreview();
 
 	inline const bool isRunning() const;
-	int setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth = 1.0f);
+	int setPreviewSize(int width, int height,int fi);
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 	int startPreview();

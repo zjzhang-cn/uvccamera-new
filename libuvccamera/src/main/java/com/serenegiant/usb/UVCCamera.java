@@ -23,13 +23,6 @@
 
 package com.serenegiant.usb;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
 import android.text.TextUtils;
@@ -38,6 +31,13 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 
 import com.serenegiant.usb.USBMonitor.UsbControlBlock;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class UVCCamera {
 	private static final boolean DEBUG = false;	// TODO set false when releasing
@@ -127,7 +127,7 @@ public class UVCCamera {
 	private UsbControlBlock mCtrlBlock;
     protected long mControlSupports;			// カメラコントロールでサポートしている機能フラグ
     protected long mProcSupports;				// プロセッシングユニットでサポートしている機能フラグ
-    protected int mCurrentFrameFormat = FRAME_FORMAT_MJPEG;
+    protected int mCurrentFormatIndex = 0;
 	protected int mCurrentWidth = DEFAULT_PREVIEW_WIDTH, mCurrentHeight = DEFAULT_PREVIEW_HEIGHT;
 	protected float mCurrentBandwidthFactor = DEFAULT_BANDWIDTH;
     protected String mSupportedSize;
@@ -210,6 +210,10 @@ public class UVCCamera {
 //			DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, DEFAULT_PREVIEW_MODE, DEFAULT_BANDWIDTH);
     }
 
+    public String getCameraSpec(){
+    	return mSupportedSize == null ? "" : mSupportedSize;
+	}
+
 	/**
 	 * set status callback
 	 * @param callback
@@ -244,7 +248,7 @@ public class UVCCamera {
    			mCtrlBlock = null;
 		}
 		mControlSupports = mProcSupports = 0;
-		mCurrentFrameFormat = -1;
+		mCurrentFormatIndex = 0;
 		mCurrentBandwidthFactor = 0;
 		mSupportedSize = null;
 		mCurrentSizeList = null;
@@ -279,66 +283,44 @@ public class UVCCamera {
 		}
 		return result;
 	}
-	
 	/**
 	 * Set preview size and preview mode
 	 * @param width
 	   @param height
 	 */
 	public void setPreviewSize(final int width, final int height) {
-		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, mCurrentFrameFormat, mCurrentBandwidthFactor);
+		setPreviewSize(width, height, 0);
 	}
 
 	/**
 	 * Set preview size and preview mode
 	 * @param width
 	 * @param height
-	 * @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
+	 * @param formatIndex either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
 	 */
-	public void setPreviewSize(final int width, final int height, final int frameFormat) {
-		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, frameFormat, mCurrentBandwidthFactor);
-	}
-	
-	/**
-	 * Set preview size and preview mode
-	 * @param width
-	   @param height
-	   @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
-	   @param bandwidth [0.0f,1.0f]
-	 */
-	public void setPreviewSize(final int width, final int height, final int frameFormat, final float bandwidth) {
-		setPreviewSize(width, height, DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, frameFormat, bandwidth);
-	}
-
-	/**
-	 * Set preview size and preview mode
-	 * @param width
-	 * @param height
-	 * @param min_fps
-	 * @param max_fps
-	 * @param frameFormat either FRAME_FORMAT_YUYV(0) or FRAME_FORMAT_MJPEG(1)
-	 * @param bandwidthFactor
-	 */
-	public void setPreviewSize(final int width, final int height, final int min_fps, final int max_fps, final int frameFormat, final float bandwidthFactor) {
+	public void setPreviewSize(final int width, final int height, final int formatIndex) {
 		if ((width == 0) || (height == 0))
 			throw new IllegalArgumentException("invalid preview size");
 		if (mNativePtr != 0) {
-			final int result = nativeSetPreviewSize(mNativePtr, width, height, min_fps, max_fps, frameFormat, bandwidthFactor);
+			final int result = nativeSetPreviewSize(mNativePtr, width, height, formatIndex);
 			if (result != 0)
 				throw new IllegalArgumentException("Failed to set preview size");
-			mCurrentFrameFormat = frameFormat;
+			mCurrentFormatIndex = formatIndex;
 			mCurrentWidth = width;
 			mCurrentHeight = height;
-			mCurrentBandwidthFactor = bandwidthFactor;
 		}
 	}
 
 	public List<Size> getSupportedSizeList() {
-		final int type = (mCurrentFrameFormat > 0) ? 6 : 4;
-		return getSupportedSize(type, mSupportedSize);
+//		write(writer, "index", fmt_desc->bFormatIndex);
+//		write(writer, "type", fmt_desc->bDescriptorSubtype);
+//		write(writer, "default", fmt_desc->bDefaultFrameIndex);
+//		writer.String("size");
+//		writer.StartArray();
+		return getSupportedSize(mCurrentFormatIndex, mSupportedSize);
 	}
 
-	public static List<Size> getSupportedSize(final int type, final String supportedSize) {
+	public static List<Size> getSupportedSize(final int formatIndex, final String supportedSize) {
 		final List<Size> result = new ArrayList<Size>();
 		if (!TextUtils.isEmpty(supportedSize))
 		try {
@@ -347,10 +329,11 @@ public class UVCCamera {
 			final int format_nums = formats.length();
 			for (int i = 0; i < format_nums; i++) {
 				final JSONObject format = formats.getJSONObject(i);
-				if(format.has("type") && format.has("size")) {
-					final int format_type = format.getInt("type");
-					if ((format_type == type) || (type == -1)) {
-						addSize(format, format_type, 0, result);
+				if(format.has("index") && format.has("size")) {
+					final int format_index = format.getInt("index");
+					final int format_type = format.optInt("type");
+					if ((format_index == formatIndex) || (formatIndex == -1)) {
+						addSize(format, format_index, format_type,0, result);
 					}
 				}
 			}
@@ -360,7 +343,7 @@ public class UVCCamera {
 		return result;
 	}
 
-	private static final void addSize(final JSONObject format, final int formatType, final int frameType, final List<Size> size_list) throws JSONException {
+	private static final void addSize(final JSONObject format, final int format_index, final int formatType, final int frameType, final List<Size> size_list) throws JSONException {
 		final JSONArray size = format.getJSONArray("size");
 		final int size_nums = size.length();
 		for (int j = 0; j < size_nums; j++) {
@@ -1038,7 +1021,7 @@ public class UVCCamera {
 	private static final native int nativeSetStatusCallback(final long mNativePtr, final IStatusCallback callback);
 	private static final native int nativeSetButtonCallback(final long mNativePtr, final IButtonCallback callback);
 
-    private static final native int nativeSetPreviewSize(final long id_camera, final int width, final int height, final int min_fps, final int max_fps, final int mode, final float bandwidth);
+    private static final native int nativeSetPreviewSize(final long id_camera, final int width, final int height, final int fi);
     private static final native String nativeGetSupportedSize(final long id_camera);
     private static final native int nativeStartPreview(final long id_camera);
     private static final native int nativeStopPreview(final long id_camera);

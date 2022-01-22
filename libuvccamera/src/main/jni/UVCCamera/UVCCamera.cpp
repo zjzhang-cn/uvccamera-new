@@ -301,11 +301,11 @@ char *UVCCamera::getSupportedSize() {
 	RETURN(NULL, char *);
 }
 
-int UVCCamera::setPreviewSize(int width, int height, int min_fps, int max_fps, int mode, float bandwidth) {
+int UVCCamera::setPreviewSize(int width, int height,int fi) {
 	ENTER();
 	int result = EXIT_FAILURE;
 	if (mPreview) {
-		result = mPreview->setPreviewSize(width, height, min_fps, max_fps, mode, bandwidth);
+		result = mPreview->setPreviewSize(width, height, fi);
 	}
 	RETURN(result, int);
 }
