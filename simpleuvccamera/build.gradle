@@ -12,8 +12,8 @@ android {
         applicationId "com.example.simpleuvccamera"
         minSdkVersion 21
         targetSdkVersion 31
-        versionCode 3
-        versionName "1.1.22124"
+        versionCode 4
+        versionName "1.2.22124"
 
         signingConfig signingConfigs.debug
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -46,6 +46,12 @@ android {
     lintOptions {
         checkReleaseBuilds false
         abortOnError false
+    }
+
+    android.applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            outputFileName = 'simpleuvccamera-' + versionName + ".apk"
+        }
     }
 }
 

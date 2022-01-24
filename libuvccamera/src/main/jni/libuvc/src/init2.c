@@ -8,7 +8,7 @@ uvc_error_t uvc_open2(
     uvc_device_handle_t **devh,libusb_device_handle *usb_devh) {
   uvc_error_t ret;
   // struct libusb_device_handle *usb_devh;
-    if (LIBUVC_NUM_TRANSFER_BUFS > 1) {
+    if (LIBUVC_NUM_TRANSFER_BUFS > 30) {
         LOGE("LIBUVC_NUM_TRANSFER_BUFS too large %d",LIBUVC_NUM_TRANSFER_BUFS);
         return -1;
     }
