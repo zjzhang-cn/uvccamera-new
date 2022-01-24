@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <linux/time.h>
 #include <unistd.h>
-#if 1	// set 1 if you don't need debug log
+#if 0	// set 1 if you don't need debug log
 	#ifndef LOG_NDEBUG
 		#define	LOG_NDEBUG		// w/o LOGV/LOGD/MARK
 	#endif
@@ -246,40 +246,7 @@ int UVCPreview::setFrameCallback(JNIEnv *env, jobject frame_callback_obj) {
 	RETURN(0, int);
 }
 
-void UVCPreview::callbackPixelFormatChanged() {
-	mFrameCallbackFunc = NULL;
-	const size_t sz = requestWidth * requestHeight;
-	switch (mPixelFormat) {
-	  case PIXEL_FORMAT_RAW:
-		LOGI("PIXEL_FORMAT_RAW:");
-		callbackPixelBytes = sz * 2;
-		break;
-	  case PIXEL_FORMAT_YUV:
-		LOGI("PIXEL_FORMAT_YUV:");
-		callbackPixelBytes = sz * 2;
-		break;
-	  case PIXEL_FORMAT_RGB565:
-		LOGI("PIXEL_FORMAT_RGB565:");
-		mFrameCallbackFunc = uvc_any2rgb;
-		callbackPixelBytes = sz * 2;
-		break;
-	  case PIXEL_FORMAT_RGBX:
-		LOGI("PIXEL_FORMAT_RGBX:");
-		mFrameCallbackFunc = uvc_any2rgbx;
-		callbackPixelBytes = sz * 4;
-		break;
-	  case PIXEL_FORMAT_YUV20SP:
-		LOGI("PIXEL_FORMAT_YUV20SP:");
-		mFrameCallbackFunc = uvc_yuyv2iyuv420SP;
-		callbackPixelBytes = (sz * 3) / 2;
-		break;
-	  case PIXEL_FORMAT_NV21:
-		LOGI("PIXEL_FORMAT_NV21:");
-		mFrameCallbackFunc = uvc_yuyv2yuv420SP;
-		callbackPixelBytes = (sz * 3) / 2;
-		break;
-	}
-}
+
 
 void UVCPreview::clearDisplay() {
 	ENTER();
@@ -628,6 +595,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 
 		uvc_frame_t *src_frame = NULL;
 		uvc_frame_t *i420;
+		LOGD("begin uvc_stream_get_frame");
 		result = uvc_stream_get_frame(stmh,&src_frame,30000000);
 		if (LIKELY(result)){
 			LOGW("uvc_stream_get_frame failed:%d", result);
@@ -639,6 +607,9 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 		}
 		const uint32_t width = src_frame->width;
 		const uint32_t height = src_frame->height;
+		const uvc_frame_format frame_format = src_frame->frame_format;
+		LOGD("end uvc_stream_get_frame.width:%d,height:%d,format:%d,size:%d,meta:%d",width,height,(int)frame_format,
+			src_frame->data_bytes,src_frame->metadata_bytes);
 		if (frame_format == UVC_FRAME_FORMAT_MJPEG){
 			if (!LIKELY(frame)){
 				frame = get_frame(src_frame->width*src_frame->height*2);

@@ -108,7 +108,7 @@ private:
 	void do_capture_surface(JNIEnv *env);
 	void do_capture_idle_loop(JNIEnv *env);
 	void do_capture_callback(JNIEnv *env, uvc_frame_t *frame);
-	void callbackPixelFormatChanged();
+	
 	void get_uvc_format(uvc_format_desc_t **fmt);
 public:
 	UVCPreview(uvc_device_handle_t *devh);

@@ -67,13 +67,9 @@ enum uvc_frame_format {
    */
   UVC_FRAME_FORMAT_YUYV,
   UVC_FRAME_FORMAT_UYVY,
-	/** 16-bits RGB */
-	UVC_FRAME_FORMAT_RGB565,	// RGB565
-	/** 24-bit RGB */
-	UVC_FRAME_FORMAT_RGB,		// RGB888
-	UVC_FRAME_FORMAT_BGR,		// BGR888
-	/* 32-bits RGB */
-	UVC_FRAME_FORMAT_RGBX,		// RGBX8888
+  /** 24-bit RGB */
+  UVC_FRAME_FORMAT_RGB,
+  UVC_FRAME_FORMAT_BGR,
   /** Motion-JPEG (or JPEG) encoded images */
   UVC_FRAME_FORMAT_MJPEG,
   UVC_FRAME_FORMAT_H264,
@@ -532,7 +528,6 @@ typedef struct uvc_still_ctrl {
 } uvc_still_ctrl_t;
 
 uvc_error_t uvc_init(uvc_context_t **ctx, struct libusb_context *usb_ctx);
-uvc_error_t uvc_init2(uvc_context_t **ctx, struct libusb_context *usb_ctx, const char *usbfs);
 void uvc_exit(uvc_context_t *ctx);
 
 uvc_error_t uvc_get_device_list(
@@ -559,12 +554,6 @@ uvc_error_t uvc_find_devices(
     uvc_device_t ***devs,
     int vid, int pid, const char *sn);
 
-uvc_error_t uvc_find_device2(uvc_context_t *ctx, uvc_device_t **dev, int vid,
-		int pid, const char *sn, int fd);
-// XXX
-uvc_error_t uvc_get_device_with_fd(uvc_context_t *ctx, uvc_device_t **device,
-		int vid, int pid, const char *serial, int fd, int busnum, int devaddr);
-
 #if LIBUSB_API_VERSION >= 0x01000107
 uvc_error_t uvc_wrap(
     int sys_dev,
@@ -574,8 +563,7 @@ uvc_error_t uvc_wrap(
 
 uvc_error_t uvc_open(
     uvc_device_t *dev,
-    uvc_device_handle_t **devh,
-    struct libusb_device_handle *usb_devh);
+    uvc_device_handle_t **devh);
 void uvc_close(uvc_device_handle_t *devh);
 
 uvc_device_t *uvc_get_device(uvc_device_handle_t *devh);
@@ -812,59 +800,10 @@ uvc_error_t uvc_yuyv2uv(uvc_frame_t *in, uvc_frame_t *out);
 #ifdef LIBUVC_HAS_JPEG
 uvc_error_t uvc_mjpeg2rgb(uvc_frame_t *in, uvc_frame_t *out);
 uvc_error_t uvc_mjpeg2gray(uvc_frame_t *in, uvc_frame_t *out);
-uvc_error_t uvc_mjpeg2bgr(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-uvc_error_t uvc_mjpeg2rgb565(uvc_frame_t *in, uvc_frame_t *out);	// XXX
-uvc_error_t uvc_mjpeg2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-uvc_error_t uvc_mjpeg2yuv(void *handler,uvc_frame_t *in, uvc_frame_t *out);		// XXX
 #endif
-
-uvc_error_t uvc_yuyv2rgb565(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-uvc_error_t uvc_uyvy2rgb565(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-uvc_error_t uvc_rgb2rgb565(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-uvc_error_t uvc_any2rgb565(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-
-uvc_error_t uvc_yuyv2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-uvc_error_t uvc_uyvy2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-uvc_error_t uvc_rgb2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-uvc_error_t uvc_any2rgbx(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-
-uvc_error_t uvc_yuyv2yuv420P(uvc_frame_t *in, uvc_frame_t *out);	// XXX
-uvc_error_t uvc_yuyv2yuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
-uvc_error_t uvc_any2yuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
-
-uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
-uvc_error_t uvc_yuyv2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
-uvc_error_t uvc_any2iyuv420SP(uvc_frame_t *in, uvc_frame_t *out);	// XXX
-
-uvc_error_t uvc_any2yuyv(uvc_frame_t *in, uvc_frame_t *out);		// XXX
-
-uvc_error_t uvc_ensure_frame_size(uvc_frame_t *frame, size_t need_bytes); // XXX
-
-//**********************************************************************
-// added for diagnostic
-// t_saki@serenegiant.com
-void uvc_print_format_desc_one(uvc_format_desc_t *format_descriptors, FILE *stream);
-void uvc_print_format_desc(uvc_format_desc_t *format_descriptors, FILE *stream);
-void uvc_print_device_desc(uvc_device_handle_t *devh, FILE *stream);
-void uvc_print_configuration_desc(uvc_device_handle_t *devh, FILE *stream);
-void uvc_print_interface_desc(
-	const struct libusb_interface *interface, const int num_interface,
-	const char *prefix, FILE *stream);
-void uvc_print_endpoint_desc(
-	const struct libusb_endpoint_descriptor *endpoint, const int num_endpoint,
-	const char *prefix, FILE *stream);
-
-#define uvc_print_format_descriptor_one uvc_print_format_desc_one
-#define uvc_print_format_descriptor uvc_print_format_desc
-#define uvc_print_device_descriptor uvc_print_device_desc
-#define uvc_print_configuration_descriptor uvc_print_configuration_desc
-#define uvc_print_interface_descriptor uvc_print_interface_desc
-#define uvc_print_endpoint_descriptor uvc_print_endpoint_desc;
 
 #ifdef __cplusplus
 }
-
 #endif
 
 #endif // !def(LIBUVC_H)

@@ -108,8 +108,6 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
                 mStart = true
                 runOnUiThread {
                     if (lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)) {
-                        glSurfaceView.setYuvDataSize(width, height)
-                        glSurfaceView.setDisplayOrientation(0)
                         frameNumbView.setText("preview start...")
                         handler.post {
                             openDevice(device,ctrlBlock,createNew)
@@ -132,6 +130,10 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
         if (!createNew){
             val camera = mUVCCamera
             if (camera != null){
+                runOnUiThread {
+                    glSurfaceView.setYuvDataSize(width, height)
+                    glSurfaceView.setDisplayOrientation(0)
+                }
                 Log.w(TAG,"resuse a device...");
                 Timber.i("setPreviewSize ...")
                 camera.setPreviewSize(width, height,1)
@@ -155,6 +157,12 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             Timber.i(jsonStr)
             cameraInfo = JSONObject(jsonStr)
             getDefaultWithHeightAndFormatFromCameraInfo(cameraInfo)
+            runOnUiThread {
+                glSurfaceView.setYuvDataSize(width, height)
+                glSurfaceView.setDisplayOrientation(0)
+                findViewById<View>(R.id.camera_group).visibility = View.VISIBLE
+                findViewById<View>(R.id.no_camera_group).visibility = View.GONE
+            }
             Timber.i("setPreviewSize ...")
             camera.setPreviewSize(width, height,formatIndex)
             Timber.i("setFrameCallback ...")
@@ -162,10 +170,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             Timber.i("startPreview ...")
             camera.startPreview()
             Timber.i("startPreview done...")
-            runOnUiThread {
-                findViewById<View>(R.id.camera_group).visibility = View.VISIBLE
-                findViewById<View>(R.id.no_camera_group).visibility = View.GONE
-            }
+
         } catch (e: Throwable) {
             runOnUiThread { frameNumbView.setText("err:${e.message}") }
         }
@@ -185,11 +190,6 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             width = w
             height = h
             formatIndex = index
-
-            runOnUiThread {
-                glSurfaceView.setYuvDataSize(width, height)
-                glSurfaceView.setDisplayOrientation(0)
-            }
         }
     }
 
@@ -225,7 +225,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
         frameNB++
         glSurfaceView!!.feedData(frame)
         if (mStart) runOnUiThread { frameNumbView.text =
-            "recv $frameNB frames FPS:(${FrameRateStat.stat("FrameCB")})" }
+            "recv $frameNB frames size:${frame.capacity()} FPS:(${FrameRateStat.stat("FrameCB")})" }
     }
 
     companion object {
@@ -276,8 +276,10 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
                             camera.setPreviewSize(width, height,fmtIndex)
                             camera.startPreview()
                         }
+                        glSurfaceView.setYuvDataSize(width, height)
+                        glSurfaceView.setDisplayOrientation(0)
                     }
-                    CameraInfoFragment.newInstance(formats)
+                    CameraInfoFragment.newInstance(formats,width,height,formatIndex)
                         .show(supportFragmentManager,null)
                 }
             }catch (e:Throwable){

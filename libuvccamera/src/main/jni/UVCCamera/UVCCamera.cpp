@@ -212,7 +212,7 @@ uvc_error_t uvc_get_device_with_fd(uvc_context_t *ctx, uvc_device_t **device,
         }
 		if (LIKELY(!result)) {
 			// カメラのopen処理
-			result = uvc_open(mDevice, &mDeviceHandle, devh);
+			result = uvc_open2(mDevice, &mDeviceHandle, devh);
 			if (LIKELY(!result)) {
 				// open出来た時
 #if LOCAL_DEBUG

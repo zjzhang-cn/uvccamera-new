@@ -704,10 +704,6 @@ void _uvc_process_payload(uvc_stream_handle_t *strmh, uint8_t *payload, size_t p
     0xde, 0xad, 0xbe, 0xef, 0xde, 0xad, 0xfa, 0xce
   };
 
-  static uint8_t is_empty[] ={
-    0,0,0,0,0,0,0,0,0,0,0,0
-  } ;
-
   /* ignore empty payload transfers */
   if (payload_len == 0)
     return;
@@ -729,20 +725,7 @@ void _uvc_process_payload(uvc_stream_handle_t *strmh, uint8_t *payload, size_t p
     data_len = payload_len;
   } else {
     header_len = payload[0];
-    if (header_len == 0){
-        uint8_t empty = 0;
-        if (payload_len == 12){
-            if (memcmp(is_empty,payload,12) == 0){
-                empty = 1;
-            }
-        }
-        if (empty == 0){
-            UVC_DEBUG("invalid packet: actual_len=%zd, header_len=%zd,empty=%d\n", payload_len, header_len,empty);
-        }else{
-            UVC_DEBUG("bogus packet: actual_len=%zd, header_len=%zd,empty=%d\n", payload_len, header_len,empty);
-            return;
-        }
-    }
+
     if (header_len > payload_len) {
       UVC_DEBUG("bogus packet: actual_len=%zd, header_len=%zd\n", payload_len, header_len);
       return;
@@ -840,10 +823,9 @@ void LIBUSB_CALL _uvc_stream_callback(struct libusb_transfer *transfer) {
         }
 
         pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
-        if (pkt->actual_length == 0){
-            continue;
-        }
+
         _uvc_process_payload(strmh, pktbuf, pkt->actual_length);
+
       }
     }
     break;
@@ -1057,8 +1039,8 @@ uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh, uvc_stream_handle_t 
   strmh->outbuf = malloc( ctrl->dwMaxVideoFrameSize );
   strmh->holdbuf = malloc( ctrl->dwMaxVideoFrameSize );
 
-  strmh->meta_outbuf = malloc( ctrl->dwMaxVideoFrameSize );
-  strmh->meta_holdbuf = malloc( ctrl->dwMaxVideoFrameSize );
+  strmh->meta_outbuf = malloc( LIBUVC_XFER_META_BUF_SIZE );
+  strmh->meta_holdbuf = malloc( LIBUVC_XFER_META_BUF_SIZE );
    
   pthread_mutex_init(&strmh->cb_mutex, NULL);
   pthread_cond_init(&strmh->cb_cond, NULL);

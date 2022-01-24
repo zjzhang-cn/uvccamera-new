@@ -28,6 +28,7 @@
 #include <jni.h>
 #include "libusb.h"
 #include "libuvc.h"
+#include "libuvc2.h"
 #include "utilbase.h"
 
 #endif /* LIBUVCCAMERA_H_ */

@@ -101,61 +101,26 @@ void *_uvc_handle_events(void *arg) {
  * @param[in]  usb_ctx Optional USB context to use
  * @return Error opening context or UVC_SUCCESS
  */
-uvc_error_t uvc_init2(uvc_context_t **pctx, struct libusb_context *usb_ctx, const char *usbfs) {
-	uvc_error_t ret = UVC_SUCCESS;
-	uvc_context_t *ctx = calloc(1, sizeof(*ctx));
-
-	if (usb_ctx == NULL) {
-        ret = libusb_set_option(NULL, LIBUSB_OPTION_WEAK_AUTHORITY, NULL);
-        if (ret != LIBUSB_SUCCESS) {
-            LOGD("libusb_init failed: %d\n", r);
-            return -1;
-        }
-        ret = libusb_init(&ctx->usb_ctx);
-        if (ret < 0) {
-            LOGD("libusb_init failed: %d\n", r);
-            return ret;
-        }
-		ctx->own_usb_ctx = 1;
-		if (UNLIKELY(ret != UVC_SUCCESS)) {
-			LOGW("failed:err=%d", ret);
-			free(ctx);
-			ctx = NULL;
-		}
-	} else {
-		ctx->own_usb_ctx = 0;
-		ctx->usb_ctx = usb_ctx;
-	}
-
-	if (ctx != NULL)
-		*pctx = ctx;
-
-	return ret;
-}
-
 uvc_error_t uvc_init(uvc_context_t **pctx, struct libusb_context *usb_ctx) {
-	return uvc_init2(pctx, usb_ctx, NULL);
-#if 0
-	uvc_error_t ret = UVC_SUCCESS;
-	uvc_context_t *ctx = calloc(1, sizeof(*ctx));
+  uvc_error_t ret = UVC_SUCCESS;
+  uvc_context_t *ctx = calloc(1, sizeof(*ctx));
 
-	if (usb_ctx == NULL) {
-		ret = libusb_init(&ctx->usb_ctx);
-		ctx->own_usb_ctx = 1;
-		if (UNLIKELY(ret != UVC_SUCCESS)) {
-			free(ctx);
-			ctx = NULL;
-		}
-	} else {
-		ctx->own_usb_ctx = 0;
-		ctx->usb_ctx = usb_ctx;
-	}
+  if (usb_ctx == NULL) {
+    ret = libusb_init(&ctx->usb_ctx);
+    ctx->own_usb_ctx = 1;
+    if (ret != UVC_SUCCESS) {
+      free(ctx);
+      ctx = NULL;
+    }
+  } else {
+    ctx->own_usb_ctx = 0;
+    ctx->usb_ctx = usb_ctx;
+  }
 
-	if (ctx != NULL)
-		*pctx = ctx;
+  if (ctx != NULL)
+    *pctx = ctx;
 
-	return ret;
-#endif
+  return ret;
 }
 
 /**

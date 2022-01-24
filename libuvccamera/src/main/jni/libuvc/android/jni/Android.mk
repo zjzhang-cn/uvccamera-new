@@ -68,6 +68,7 @@ LOCAL_SRC_FILES := \
 	src/diag.c \
 	src/frame.c \
 	src/frame-mjpeg.c \
+	src/init2.c \
 	src/init.c \
 	src/stream.c
 

@@ -17,10 +17,13 @@ class CameraInfoFragment: DialogFragment(R.layout.camera_info_dialog) {
 
 
     companion object{
-        fun newInstance(formats:String):CameraInfoFragment{
+        fun newInstance(formats:String,width:Int,height:Int, formatIndex:Int):CameraInfoFragment{
             return CameraInfoFragment().apply {
                 arguments = Bundle().apply {
                     putString("json_formats",formats)
+                    putInt("width",width)
+                    putInt("height",height)
+                    putInt("formatIndex",formatIndex)
                 }
             }
         }
@@ -30,9 +33,15 @@ class CameraInfoFragment: DialogFragment(R.layout.camera_info_dialog) {
     lateinit var resolutions: Spinner
     lateinit var json_formats:JSONArray
     var cur_sizes:JSONArray = JSONArray()
+    var width:Int = 0
+    var height:Int = 0
+    var formatIndex:Int = 0
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         json_formats = JSONArray(requireArguments().getString("json_formats"))
+        width = requireArguments().getInt("width")
+        height = requireArguments().getInt("height")
+        formatIndex = requireArguments().getInt("formatIndex")
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -67,7 +76,20 @@ class CameraInfoFragment: DialogFragment(R.layout.camera_info_dialog) {
             ) {
                 var format = json_formats[position] as JSONObject
                 cur_sizes = format.getJSONArray("size") as JSONArray
-                resolutions.setSelection(format.optInt("default"))
+                var cur_pos = -1
+                for (i in 0 until cur_sizes.length()){
+                    val size = cur_sizes.getString(i)
+                    if (size == "${width}x$height"){
+                        cur_pos = i
+                        break
+                    }
+                }
+                if (cur_pos != -1){
+                    resolutions.setSelection(cur_pos)
+                }
+                else{
+                    resolutions.setSelection(format.optInt("default"))
+                }
                 (resolutions.adapter as BaseAdapter).notifyDataSetChanged()
             }
 
@@ -79,6 +101,13 @@ class CameraInfoFragment: DialogFragment(R.layout.camera_info_dialog) {
 
         }
 
+        for (i in 0 until json_formats.length()){
+            val fmt = json_formats.getJSONObject(i)
+            if (fmt.optInt("index") == formatIndex){
+                formats.setSelection(i)
+                break
+            }
+        }
         resolutions = view.findViewById(R.id.sp_resolution)
         resolutions.adapter = object :BaseAdapter(){
             override fun getCount() = cur_sizes.length()
@@ -101,7 +130,6 @@ class CameraInfoFragment: DialogFragment(R.layout.camera_info_dialog) {
             }
 
         }
-
         view.findViewById<View>(R.id.ok).setOnClickListener {
             parentFragmentManager.setFragmentResult("CameraInfo",Bundle().apply {
 //                var fmtIndex = result.getInt("formatIndex")
