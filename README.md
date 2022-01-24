@@ -31,9 +31,12 @@ UVCCamera是基于安卓的一个USB外接摄像头调用项目,该项目允许�
 - 去掉采集对surface的依赖;
 - 使用libyuv进行格式转换,提高了效率.
 
+
 更多说明见中文博客 https://blog.csdn.net/jyt0551/article/details/121084301
 
 也可加入QQ群交流:879258392
+
+![gif](https://user-images.githubusercontent.com/35994794/150787248-70e2a3cc-644c-4309-a525-97b4a1574536.gif)
 
 
 library and sample to access to UVC web camera on non-rooted Android device
