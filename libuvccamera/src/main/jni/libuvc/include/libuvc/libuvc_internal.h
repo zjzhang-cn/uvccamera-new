@@ -227,7 +227,7 @@ typedef struct uvc_device_info {
 #if defined(__APPLE__) && defined(__MACH__)
 #define LIBUVC_NUM_TRANSFER_BUFS 20
 #else
-#define LIBUVC_NUM_TRANSFER_BUFS 100
+#define LIBUVC_NUM_TRANSFER_BUFS 1
 #endif
 #endif
 

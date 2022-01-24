@@ -9,7 +9,7 @@ uvc_error_t uvc_open2(
     struct libusb_device_handle *usb_devh);
 uvc_error_t uvc_init2(uvc_context_t **ctx, struct libusb_context *usb_ctx, const char *usbfs);
 uvc_error_t uvc_mjpeg2yuv(void *handler,uvc_frame_t *in, uvc_frame_t *out);		// XXX
-
+void uvc_print_stream_ctrl2(uvc_stream_ctrl_t *ctrl);
 
 #ifdef __cplusplus
 }

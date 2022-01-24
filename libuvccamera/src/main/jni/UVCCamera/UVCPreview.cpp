@@ -553,7 +553,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 
 uvc_error_t uvc_start_streaming_bandwidth2(uvc_device_handle_t *devh,uvc_stream_ctrl_t *ctrl,uvc_stream_handle_t **strmh) {
 	uvc_error_t ret;
-
+	uvc_print_stream_ctrl2(ctrl);
 	ret = uvc_stream_open_ctrl(devh, strmh, ctrl);
 	if (UNLIKELY(ret != UVC_SUCCESS))
 		return ret;
@@ -596,10 +596,14 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 		uvc_frame_t *src_frame = NULL;
 		uvc_frame_t *i420;
 		LOGD("begin uvc_stream_get_frame");
-		result = uvc_stream_get_frame(stmh,&src_frame,30000000);
+		result = uvc_stream_get_frame(stmh,&src_frame,3000000);
 		if (LIKELY(result)){
 			LOGW("uvc_stream_get_frame failed:%d", result);
-			break;
+			if (UVC_ERROR_TIMEOUT == result){
+			    continue;
+			}else{
+			    break;
+			}
 		}
 		if (!LIKELY(src_frame)){
 			LOGD("uvc_stream_get_frame timeout", result);

@@ -8,7 +8,10 @@ uvc_error_t uvc_open2(
     uvc_device_handle_t **devh,libusb_device_handle *usb_devh) {
   uvc_error_t ret;
   // struct libusb_device_handle *usb_devh;
-
+    if (LIBUVC_NUM_TRANSFER_BUFS > 1) {
+        LOGE("LIBUVC_NUM_TRANSFER_BUFS too large %d",LIBUVC_NUM_TRANSFER_BUFS);
+        return -1;
+    }
   UVC_ENTER();
   ret = uvc_open_internal(dev, usb_devh, devh);
   UVC_EXIT(ret);
@@ -102,4 +105,19 @@ uvc_error_t uvc_mjpeg2yuv(void *handler, uvc_frame_t *in, uvc_frame_t *out) {
 	    return r;
 	}
     return UVC_SUCCESS;
+}
+
+void uvc_print_stream_ctrl2(uvc_stream_ctrl_t *ctrl) {
+  UVC_DEBUG( "bmHint: %04x\n", ctrl->bmHint);
+  UVC_DEBUG( "bFormatIndex: %d\n", ctrl->bFormatIndex);
+  UVC_DEBUG( "bFrameIndex: %d\n", ctrl->bFrameIndex);
+  UVC_DEBUG( "dwFrameInterval: %u\n", ctrl->dwFrameInterval);
+  UVC_DEBUG( "wKeyFrameRate: %d\n", ctrl->wKeyFrameRate);
+  UVC_DEBUG( "wPFrameRate: %d\n", ctrl->wPFrameRate);
+  UVC_DEBUG( "wCompQuality: %d\n", ctrl->wCompQuality);
+  UVC_DEBUG( "wCompWindowSize: %d\n", ctrl->wCompWindowSize);
+  UVC_DEBUG( "wDelay: %d\n", ctrl->wDelay);
+  UVC_DEBUG( "dwMaxVideoFrameSize: %u\n", ctrl->dwMaxVideoFrameSize);
+  UVC_DEBUG( "dwMaxPayloadTransferSize: %u\n", ctrl->dwMaxPayloadTransferSize);
+  UVC_DEBUG( "bInterfaceNumber: %d\n", ctrl->bInterfaceNumber);
 }
