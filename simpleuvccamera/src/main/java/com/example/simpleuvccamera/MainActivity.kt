@@ -222,10 +222,17 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
     }
 
     override fun onFrame(frame: ByteBuffer) {
+        if (frame.capacity() != width*height*3/2){
+            runOnUiThread { frameNumbView.text =
+                "frame size ${frame.capacity()} not equal to ${width*height*3/2}. ignore"
+            }
+            return
+        }
         frameNB++
         glSurfaceView!!.feedData(frame)
         if (mStart) runOnUiThread { frameNumbView.text =
-            "recv $frameNB frames size:${frame.capacity()} FPS:(${FrameRateStat.stat("FrameCB")})" }
+            "recv $frameNB frames size:${frame.capacity()} FPS:(${FrameRateStat.stat("FrameCB")})"
+        }
     }
 
     companion object {
