@@ -117,8 +117,8 @@ afterEvaluate {
 			maven {
 				url = "https://repo.rdc.aliyun.com/repository/39749-release-oGtrdD"
 				credentials {
-					username maven_user
-					password maven_pwd
+//					username maven_user
+//					password maven_pwd
 				}
 			}
 		}
