@@ -12,8 +12,8 @@ android {
         applicationId "com.example.simpleuvccamera"
         minSdkVersion 21
         targetSdkVersion 31
-        versionCode 4
-        versionName "1.2.22124"
+        versionCode appVersionCode.toInteger()
+        versionName appVersionName
 
         signingConfig signingConfigs.debug
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
