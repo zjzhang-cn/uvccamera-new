@@ -738,6 +738,7 @@ void _uvc_process_payload(uvc_stream_handle_t *strmh, uint8_t *payload, size_t p
   }
 
   if (header_len < 2) {
+    UVC_DEBUG("bad packet: header_len too short:%d",header_len);
     header_info = 0;
   } else {
     /** @todo we should be checking the end-of-header bit */
@@ -770,6 +771,8 @@ void _uvc_process_payload(uvc_stream_handle_t *strmh, uint8_t *payload, size_t p
       variable_offset += 6;
     }
 
+    //UVC_DEBUG("good packet: payload_len:%d,header_len:%d,data_len:%d,data_fid:%d,prev_fid:%d,variable_offset:%d",
+    //  payload_len,header_len,data_len,header_info & 1,strmh->fid,variable_offset);
     if (header_len > variable_offset)
     {
         // Metadata is attached to header
@@ -869,6 +872,7 @@ void LIBUSB_CALL _uvc_stream_callback(struct libusb_transfer *transfer) {
       int libusbRet = libusb_submit_transfer(transfer);
       if (libusbRet < 0)
       {
+        UVC_DEBUG("libusb_submit_transfer failed:%d", libusbRet);
         int i;
         pthread_mutex_lock(&strmh->cb_mutex);
 
@@ -1154,6 +1158,7 @@ uvc_error_t uvc_stream_start(
         libusb_get_ss_endpoint_companion_descriptor(NULL, endpoint, &ep_comp);
         if (ep_comp)
         {
+          UVC_DEBUG("packets_per_transfer = %d,config_bytes_per_packet=%d",ep_comp->wBytesPerInterval,config_bytes_per_packet);
           endpoint_bytes_per_packet = ep_comp->wBytesPerInterval;
           libusb_free_ss_endpoint_companion_descriptor(ep_comp);
           break;
@@ -1163,8 +1168,9 @@ uvc_error_t uvc_stream_start(
           if (endpoint->bEndpointAddress == format_desc->parent->bEndpointAddress) {
               endpoint_bytes_per_packet = endpoint->wMaxPacketSize;
             // wMaxPacketSize: [unused:2 (multiplier-1):3 size:11]
-            endpoint_bytes_per_packet = (endpoint_bytes_per_packet & 0x07ff) *
+              endpoint_bytes_per_packet = (endpoint_bytes_per_packet & 0x07ff) *
               (((endpoint_bytes_per_packet >> 11) & 3) + 1);
+              UVC_DEBUG("wMaxPacketSize=%d,packets_per_transfer = %d,config_bytes_per_packet=%d",endpoint->wMaxPacketSize,endpoint_bytes_per_packet,config_bytes_per_packet);
             break;
           }
         }
@@ -1176,11 +1182,14 @@ uvc_error_t uvc_stream_start(
         packets_per_transfer = (ctrl->dwMaxVideoFrameSize +
                                 endpoint_bytes_per_packet - 1) / endpoint_bytes_per_packet;
 
+        UVC_DEBUG("packets_per_transfer = %d+%d/%d",ctrl->dwMaxVideoFrameSize,endpoint_bytes_per_packet,endpoint_bytes_per_packet);
         /* But keep a reasonable limit: Otherwise we start dropping data */
         if (packets_per_transfer > 32)
           packets_per_transfer = 32;
         
         total_transfer_size = packets_per_transfer * endpoint_bytes_per_packet;
+        
+        UVC_DEBUG("transfer_bufs of %dX%d=%d",packets_per_transfer,endpoint_bytes_per_packet, total_transfer_size);
         break;
       }
     }
@@ -1205,7 +1214,7 @@ uvc_error_t uvc_stream_start(
       transfer = libusb_alloc_transfer(packets_per_transfer);
       strmh->transfers[transfer_id] = transfer;      
       strmh->transfer_bufs[transfer_id] = malloc(total_transfer_size);
-
+      UVC_DEBUG("transfer_bufs of %d size :%d",transfer_id, total_transfer_size);
       libusb_fill_iso_transfer(
         transfer, strmh->devh->usb_devh, format_desc->parent->bEndpointAddress,
         strmh->transfer_bufs[transfer_id],
@@ -1243,6 +1252,9 @@ uvc_error_t uvc_stream_start(
     ret = libusb_submit_transfer(strmh->transfers[transfer_id]);
     if (ret != UVC_SUCCESS) {
       UVC_DEBUG("libusb_submit_transfer failed: %d",ret);
+      free ( strmh->transfers[transfer_id]->buffer );
+      libusb_free_transfer ( strmh->transfers[transfer_id]);
+      strmh->transfers[transfer_id] = 0;
       continue;
     }
   }

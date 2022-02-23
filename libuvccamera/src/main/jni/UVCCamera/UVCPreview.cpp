@@ -595,7 +595,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 
 		uvc_frame_t *src_frame = NULL;
 		uvc_frame_t *i420;
-		LOGD("begin uvc_stream_get_frame");
+		// LOGD("begin uvc_stream_get_frame");
 		result = uvc_stream_get_frame(stmh,&src_frame,3000000);
 		if (LIKELY(result)){
 			LOGW("uvc_stream_get_frame failed:%d", result);
@@ -612,8 +612,8 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 		const uint32_t width = src_frame->width;
 		const uint32_t height = src_frame->height;
 		const uvc_frame_format frame_format = src_frame->frame_format;
-		LOGD("end uvc_stream_get_frame.width:%d,height:%d,format:%d,size:%d,meta:%d",width,height,(int)frame_format,
-			src_frame->data_bytes,src_frame->metadata_bytes);
+		//LOGD("end uvc_stream_get_frame.width:%d,height:%d,format:%d,size:%d,meta:%d",width,height,(int)frame_format,
+		//	src_frame->data_bytes,src_frame->metadata_bytes);
 		if (frame_format == UVC_FRAME_FORMAT_MJPEG){
 			if (!LIKELY(frame)){
 				frame = get_frame(src_frame->width*src_frame->height*2);

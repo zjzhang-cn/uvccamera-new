@@ -1494,7 +1494,7 @@ int API_EXPORTED libusb_submit_transfer(struct libusb_transfer *transfer)
 	struct libusb_context *ctx = TRANSFER_CTX(transfer);
 	int r;
 
-	usbi_dbg("transfer %p", transfer);
+	// usbi_dbg("transfer %p", transfer);
 
 	/*
 	 * Important note on locking, this function takes / releases locks
@@ -1533,6 +1533,8 @@ int API_EXPORTED libusb_submit_transfer(struct libusb_transfer *transfer)
 	if (itransfer->state_flags & USBI_TRANSFER_IN_FLIGHT) {
 		usbi_mutex_unlock(&ctx->flying_transfers_lock);
 		usbi_mutex_unlock(&itransfer->lock);
+
+		usbi_dbg("transfer %p LIBUSB_ERROR_BUSY", transfer);
 		return LIBUSB_ERROR_BUSY;
 	}
 	itransfer->transferred = 0;
@@ -1542,6 +1544,7 @@ int API_EXPORTED libusb_submit_transfer(struct libusb_transfer *transfer)
 	if (r) {
 		usbi_mutex_unlock(&ctx->flying_transfers_lock);
 		usbi_mutex_unlock(&itransfer->lock);
+		usbi_dbg("transfer %p add_to_flying_list:%d", transfer,r);
 		return r;
 	}
 	/*
@@ -1560,7 +1563,7 @@ int API_EXPORTED libusb_submit_transfer(struct libusb_transfer *transfer)
 
 	if (r != LIBUSB_SUCCESS)
 		remove_from_flying_list(itransfer);
-
+	usbi_dbg("transfer %p :%d,status:%d, len:%d", transfer,r,transfer->status,transfer->actual_length);
 	return r;
 }
 
@@ -1687,7 +1690,7 @@ int usbi_handle_transfer_completion(struct usbi_transfer *itransfer,
 	flags = transfer->flags;
 	transfer->status = status;
 	transfer->actual_length = itransfer->transferred;
-	usbi_dbg("transfer %p has callback %p", transfer, transfer->callback);
+	usbi_dbg("transfer %p has callback %p,actual_length:%d", transfer, transfer->callback,transfer->actual_length);
 	if (transfer->callback)
 		transfer->callback(transfer);
 	/* transfer might have been freed by the above call, do not use from

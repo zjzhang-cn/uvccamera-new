@@ -2097,7 +2097,7 @@ static int submit_iso_transfer(struct usbi_transfer *itransfer)
 	/* usbfs limits the number of iso packets per URB */
 	num_urbs = (num_packets + (MAX_ISO_PACKETS_PER_URB - 1)) / MAX_ISO_PACKETS_PER_URB;
 
-	usbi_dbg("need %d urbs for new transfer with length %d", num_urbs, transfer->length);
+	usbi_dbg("need %d urbs for new transfer with length %d, num_packets=%d", num_urbs, transfer->length,num_packets);
 
 	urbs = calloc(num_urbs, sizeof(*urbs));
 	if (!urbs)
@@ -2244,7 +2244,8 @@ static int op_submit_transfer(struct usbi_transfer *itransfer)
 {
 	struct libusb_transfer *transfer =
 		USBI_TRANSFER_TO_LIBUSB_TRANSFER(itransfer);
-
+	usbi_info(TRANSFER_CTX(transfer),
+			"op_submit_transfer endpoint type %d", transfer->type);
 	switch (transfer->type) {
 	case LIBUSB_TRANSFER_TYPE_CONTROL:
 		return submit_control_transfer(itransfer);
@@ -2476,8 +2477,8 @@ static int handle_iso_completion(struct usbi_transfer *itransfer,
 		return LIBUSB_ERROR_NOT_FOUND;
 	}
 
-	usbi_dbg("handling completion status %d of iso urb %d/%d", urb->status,
-		 urb_idx, num_urbs);
+	usbi_dbg("handling completion status %d of iso urb %d/%d, urb->number_of_packets=%d", urb->status,
+		 urb_idx, num_urbs,urb->number_of_packets);
 
 	/* copy isochronous results back in */
 
@@ -2655,7 +2656,7 @@ static int reap_for_handle(struct libusb_device_handle *handle)
 	itransfer = urb->usercontext;
 	transfer = USBI_TRANSFER_TO_LIBUSB_TRANSFER(itransfer);
 
-	usbi_dbg("urb type=%u status=%d transferred=%d", urb->type, urb->status, urb->actual_length);
+	usbi_dbg("urb type=%u status=%d transferred=%d,transfer type=%d", urb->type, urb->status, urb->actual_length,transfer->type);
 
 	switch (transfer->type) {
 	case LIBUSB_TRANSFER_TYPE_ISOCHRONOUS:
@@ -2703,6 +2704,7 @@ static int op_handle_events(struct libusb_context *ctx,
 		}
 
 		if (pollfd->revents & POLLERR) {
+			usbi_info(ctx,"reap_for_handle enter");
 			/* remove the fd from the pollfd set so that it doesn't continuously
 			 * trigger an event, and flag that it has been removed so op_close()
 			 * doesn't try to remove it a second time */
@@ -2724,6 +2726,7 @@ static int op_handle_events(struct libusb_context *ctx,
 			}
 
 			usbi_handle_disconnect(handle);
+			usbi_info(ctx,"reap_for_handle leave:r=%d",r);
 			continue;
 		}
 

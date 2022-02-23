@@ -83,6 +83,8 @@ uvc_error_t uvc_mjpeg2yuv(void *handler, uvc_frame_t *in, uvc_frame_t *out) {
 	if (r < 0){
 	    LOGE("tjDecompressHeader3 err.%s", tjGetErrorStr());
 	    return r;
+	}else{
+		// LOGI("tjDecompressHeader3 ok.in->data_bytes=%d",in->data_bytes);
 	}
     size_t size = tjBufSizeYUV2(width,4,height,jpegSubsamp);
     if (size > out->data_bytes){
