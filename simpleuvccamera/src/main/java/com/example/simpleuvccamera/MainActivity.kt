@@ -1,6 +1,7 @@
 package com.example.simpleuvccamera
 
 import android.Manifest
+import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.hardware.usb.UsbDevice
 import android.os.Build
@@ -11,11 +12,13 @@ import android.util.Log
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.FragmentResultListener
 import androidx.lifecycle.Lifecycle
 import com.example.simpleuvccamera.fragment.CameraInfoFragment
+import com.example.simpleuvccamera.log.MyLogcatSaver
 import com.example.simpleuvccamera.widget.AspectRatioFrameLayout
 import com.example.simpleuvccamera.widget.MyGLSurfaceView
 import com.serenegiant.usb.DeviceFilter
@@ -23,15 +26,22 @@ import com.serenegiant.usb.IFrameCallback
 import com.serenegiant.usb.USBMonitor
 import com.serenegiant.usb.UVCCamera
 import com.serenegiant.utils.FrameRateStat
+import com.tsinglink.android.library.freetype.TextDraw
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.File
 import java.nio.ByteBuffer
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity(), IFrameCallback {
 
     private var mUSBMonitor: USBMonitor? = null
     private var mUVCCamera: UVCCamera? = null
+    private var logSaver:MyLogcatSaver? = null
+    private var textDraw = TextDraw()
     private lateinit var cameraInfo:JSONObject
     private lateinit var glSurfaceView: MyGLSurfaceView
     lateinit var container: AspectRatioFrameLayout
@@ -46,6 +56,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        setSupportActionBar(findViewById(R.id.toolbar))
 
         var t = HandlerThread("uvc-camera")
         t.start()
@@ -72,6 +83,14 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
         }else{
             Toast.makeText(this,"No camera permission.",Toast.LENGTH_SHORT).show()
         }
+
+        if (ActivityCompat.checkSelfPermission(this,Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            == PackageManager.PERMISSION_GRANTED){
+            logSaver = MyLogcatSaver().apply {
+                startup(applicationContext)
+            }
+            Toast.makeText(this,getString(R.string.toast_log_path),Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun initUSBMonitor() {
@@ -90,7 +109,9 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             override fun onDettach(device: UsbDevice) {
                 Log.i(TAG,"onDettach")
                 handler.post {
-                    mUVCCamera?.stopPreview()
+                    mUVCCamera?.apply {
+                        stopPreview(this)
+                    }
                     mUVCCamera?.destroy()
                 }
                 runOnUiThread {
@@ -135,13 +156,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
                     glSurfaceView.setDisplayOrientation(0)
                 }
                 Log.w(TAG,"resuse a device...");
-                Timber.i("setPreviewSize ...")
-                camera.setPreviewSize(width, height,1)
-                Timber.i("setFrameCallback ...")
-                camera.setFrameCallback(this@MainActivity)
-                Timber.i("startPreview ...")
-                camera.startPreview()
-                Timber.i("startPreview done...")
+                startPreview(camera)
                 return
             }else{
                 throw IllegalStateException("resuse a device with null camera...")
@@ -163,17 +178,29 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
                 findViewById<View>(R.id.camera_group).visibility = View.VISIBLE
                 findViewById<View>(R.id.no_camera_group).visibility = View.GONE
             }
-            Timber.i("setPreviewSize ...")
-            camera.setPreviewSize(width, height,formatIndex)
-            Timber.i("setFrameCallback ...")
-            camera.setFrameCallback(this@MainActivity)
-            Timber.i("startPreview ...")
-            camera.startPreview()
-            Timber.i("startPreview done...")
+            startPreview(camera)
 
         } catch (e: Throwable) {
             runOnUiThread { frameNumbView.setText("err:${e.message}") }
         }
+    }
+
+    private fun startPreview(camera: UVCCamera) {
+        Timber.i("setPreviewSize with width:%d,height:%d,format:%d...",width,height,formatIndex)
+        camera.setPreviewSize(width, height, formatIndex)
+        Timber.i("setFrameCallback ...")
+        camera.setFrameCallback(this@MainActivity)
+        Timber.i("startPreview ...")
+        camera.startPreview()
+        Timber.i("startPreview done...")
+        if (File("/system/fonts/NotoSansCJK-Regular.ttc").exists()) {
+            textDraw.init("/system/fonts/NotoSansCJK-Regular.ttc", 40, 0.0f)
+        }
+    }
+
+    private fun stopPreview(camera: UVCCamera){
+        camera.stopPreview()
+        textDraw.release()
     }
 
     private fun getDefaultWithHeightAndFormatFromCameraInfo(obj:JSONObject) {
@@ -208,6 +235,14 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
 //                Toast.makeText(this,"Please restart app",Toast.LENGTH_LONG).show()
                 recreate()
             }
+        }else if (requestCode == 112){
+            if (grantResults.size >= 2 && grantResults[0] == PackageManager.PERMISSION_GRANTED &&
+                grantResults[1] == PackageManager.PERMISSION_GRANTED){
+                logSaver = MyLogcatSaver().apply {
+                    startup(applicationContext)
+                }
+                Toast.makeText(this,getString(R.string.toast_log_path),Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -215,9 +250,13 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
         mUSBMonitor?.unregister()
         mUSBMonitor?.destroy()
         handler.post {
-            mUVCCamera?.stopPreview()
+            mUVCCamera?.apply {
+                stopPreview(this)
+            }
             mUVCCamera?.destroy()
         }
+        logSaver?.teardown()
+        logSaver = null
         super.onDestroy()
     }
 
@@ -229,6 +268,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             return
         }
         frameNB++
+        textDraw.drawBf("Hello,UVC摄像头.${SimpleDateFormat("MM:ss").format(Date())}",20,60,frame,width,height)
         glSurfaceView!!.feedData(frame)
         if (mStart) runOnUiThread { frameNumbView.text =
             "recv $frameNB frames size:${frame.capacity()} FPS:(${FrameRateStat.stat("FrameCB")})"
@@ -242,7 +282,9 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
     fun onEjectCamera(v: View) {
         handler.post {
             if (mStart) {
-                mUVCCamera?.stopPreview()
+                mUVCCamera?.apply {
+                    stopPreview(this)
+                }
                 mStart = false
 
                 runOnUiThread {
@@ -252,7 +294,9 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             }
             else {
                 mStart = true
-                mUVCCamera?.startPreview()
+                mUVCCamera?.apply {
+                    startPreview(this)
+                }
             }
         }
     }
@@ -279,9 +323,8 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
                         formatIndex = fmtIndex
 
                         handler.post {  // change camera's resolution..
-                            camera.stopPreview()
-                            camera.setPreviewSize(width, height,fmtIndex)
-                            camera.startPreview()
+                            stopPreview(camera)
+                            startPreview(camera)
                         }
                         glSurfaceView.setYuvDataSize(width, height)
                         glSurfaceView.setDisplayOrientation(0)
@@ -293,5 +336,35 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
 
             }
         }
+    }
+
+    fun onSaveLog(view: View) {
+        if (logSaver != null){
+            AlertDialog.Builder(this).setMessage(getString(R.string.log_describe))
+                .setPositiveButton(android.R.string.ok,null).show()
+            return
+        }
+        AlertDialog.Builder(this).setMessage(getString(R.string.save_log_request))
+        .setPositiveButton(android.R.string.ok
+        ) { _, _ ->
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) != PackageManager.PERMISSION_GRANTED
+                || ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_EXTERNAL_STORAGE),
+                    112
+                )
+            } else {
+
+            }
+        }.setNegativeButton(android.R.string.cancel,null).show()
     }
 }
