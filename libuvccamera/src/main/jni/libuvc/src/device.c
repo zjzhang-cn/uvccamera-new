@@ -1066,10 +1066,15 @@ uvc_error_t uvc_scan_control(uvc_device_handle_t *devh, uvc_device_info_t *info)
       0x8102 == dev_desc->idProduct )) {
     haveTISCamera = 1;
   }
+  UVC_DEBUG("dev_desc->idVendor :%04x, dev_desc->idProduct :%04x,haveTISCamera=%d",
+    dev_desc->idVendor, dev_desc->idProduct,haveTISCamera);
   uvc_free_device_descriptor ( dev_desc );
 
   for (interface_idx = 0; interface_idx < info->config->bNumInterfaces; ++interface_idx) {
     if_desc = &info->config->interface[interface_idx].altsetting[0];
+
+    UVC_DEBUG("if_desc->bInterfaceClass :%d, if_desc->bInterfaceSubClass:%d",
+      if_desc->bInterfaceClass, if_desc->bInterfaceSubClass);
 
     if ( haveTISCamera && if_desc->bInterfaceClass == 255 && if_desc->bInterfaceSubClass == 1) // Video, Control
       break;
