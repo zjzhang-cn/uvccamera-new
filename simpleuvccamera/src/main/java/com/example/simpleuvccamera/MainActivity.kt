@@ -3,13 +3,19 @@ package com.example.simpleuvccamera
 import android.Manifest
 import android.content.DialogInterface
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageFormat.NV21
+import android.graphics.Rect
+import android.graphics.YuvImage
 import android.hardware.usb.UsbDevice
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.HandlerThread
+import android.net.Uri
+import android.os.*
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -26,11 +32,14 @@ import com.serenegiant.usb.IFrameCallback
 import com.serenegiant.usb.USBMonitor
 import com.serenegiant.usb.UVCCamera
 import com.serenegiant.utils.FrameRateStat
+import com.tsinglink.android.library.YuvLib
 import com.tsinglink.android.library.freetype.TextDraw
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
@@ -38,6 +47,8 @@ import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity(), IFrameCallback {
 
+    private var requestTakingPicture: Boolean = false
+    private var requestTakingPictureMillis:Long = 0
     private var mUSBMonitor: USBMonitor? = null
     private var mUVCCamera: UVCCamera? = null
     private var logSaver:MyLogcatSaver? = null
@@ -90,6 +101,10 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
                 startup(applicationContext)
             }
             Toast.makeText(this,getString(R.string.toast_log_path),Toast.LENGTH_SHORT).show()
+        }
+
+        findViewById<View>(R.id.take_picture).setOnClickListener {
+            onTakePicture(it)
         }
     }
 
@@ -268,7 +283,16 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             return
         }
         frameNB++
-        textDraw.drawBf("Hello,UVC摄像头.${SimpleDateFormat("MM:ss").format(Date())}",20,60,frame,width,height)
+        textDraw.drawBf("Hello,UVC摄像头.${SimpleDateFormat("MM:ss").format(Date())}",20,60,
+            frame,width,height)
+        if (requestTakingPicture){
+            try {
+                onTakePictureInterval(frame)
+            }catch (e:Throwable){
+                e.printStackTrace()
+            }
+            requestTakingPicture = false
+        }
         glSurfaceView!!.feedData(frame)
         if (mStart) runOnUiThread { frameNumbView.text =
             "recv $frameNB frames size:${frame.capacity()} FPS:(${FrameRateStat.stat("FrameCB")})"
@@ -366,5 +390,45 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
 
             }
         }.setNegativeButton(android.R.string.cancel,null).show()
+    }
+
+    fun onTakePicture(view: View) {
+        view.isEnabled = false
+        requestTakingPicture = true
+        requestTakingPictureMillis = SystemClock.elapsedRealtime()
+        view.postDelayed({
+             view.isEnabled = true
+        },3000)
+    }
+
+    private fun onTakePictureInterval(frame: ByteBuffer) {
+        val width = width
+        val height = height
+        if (width == 0 || height == 0
+            || SystemClock.currentThreadTimeMillis() - requestTakingPictureMillis >= 2000){ //
+                runOnUiThread {
+                    findViewById<View>(R.id.take_picture).isEnabled = true
+                }
+            return
+        }
+        val buf = ByteArray(frame.capacity())
+        frame.get(buf)
+        val nv21 = ByteArray(frame.capacity())
+        YuvLib.ConvertFromI420(buf, nv21, width, height, 2)
+        val yuvImage = YuvImage(nv21, NV21, width, height, null)
+        val privateJpeg = File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "tmp.jpg")
+        FileOutputStream(privateJpeg).use {
+            yuvImage.compressToJpeg(Rect(0, 0, width, height), 80, it)
+        }
+        runOnUiThread {
+            findViewById<View>(R.id.take_picture).isEnabled = true
+            val imageView = ImageView(this)
+            val lpwidth = (resources.displayMetrics.widthPixels*0.75).toInt()
+            val lpheight = (lpwidth * height * 1.0/width).toInt()
+            val lp = FrameLayout.LayoutParams(lpwidth,lpheight)
+            imageView.layoutParams = lp
+            imageView.setImageURI(Uri.fromFile(privateJpeg))
+            AlertDialog.Builder(this).setView(imageView).show()
+        }
     }
 }

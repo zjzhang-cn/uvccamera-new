@@ -10,4 +10,5 @@
     <string name="toast_log_path">日志存储在Download/simpleuvccamera/logs目录</string>
     <string name="save_log_request">为了协助排查，APP需要在Download/simpleuvccamera/logs下写入日志。如果遇到问题,您可以将这些日志作为附件创建issue.(github.com/tsinglink/uvccamera)</string>
     <string name="log_describe">日志保存在 Download/simpleuvccamera/logs 中。 如果您发现错误，您可以使用这些日志作为附件创建问题。 (github.com/tsinglink/uvccamera)</string>
+    <string name="take_snap">拍照</string>
 </resources>

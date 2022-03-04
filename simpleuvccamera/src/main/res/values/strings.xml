@@ -10,4 +10,5 @@
     <string name="toast_log_path">Logs are saved in Download/simpleuvccamera/logs</string>
     <string name="save_log_request">To assist in troubleshooting, the APP needs to write logs under Download/simpleuvccamera/logs. You can create issues with these logs as attachments to github (github.com/tsinglink/uvccamera)</string>
     <string name="log_describe">The log was saved in Download/simpleuvccamera/logs. If you find bugs, you can create an issue with these logs as attachments. (github.com/tsinglink/uvccamera)</string>
+    <string name="take_snap">Take picture</string>
 </resources>
