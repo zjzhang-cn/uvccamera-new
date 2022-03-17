@@ -225,7 +225,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             val index = fmt.getInt("index")
             val size = fmt.getJSONArray("size")
             val default = fmt.getInt("default")
-            val resolution = size[default] as String
+            val resolution = size[if (default >= size.length()) 0 else default] as String
             val splite = resolution.split("x")
             var w = splite[0].toInt()
             var h = splite[1].toInt()
