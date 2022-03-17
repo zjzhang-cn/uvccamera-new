@@ -58,3 +58,4 @@ libuvccamera/src/main/libs
 /usbCameraTest4/src/main/libs/armeabi-v7a/gdb.setup
 /usbCameraTest4/src/main/libs/armeabi-v7a/gdbserver
 gly.keystore
+libuvccamera/src/main/jni/.vscode/
