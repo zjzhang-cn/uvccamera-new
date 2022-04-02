@@ -1,17 +1,14 @@
 package com.example.simpleuvccamera
 
 import android.Manifest
-import android.content.DialogInterface
+import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.ImageFormat.NV21
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.hardware.usb.UsbDevice
 import android.net.Uri
 import android.os.*
-import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
@@ -21,7 +18,6 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.fragment.app.FragmentResultListener
 import androidx.lifecycle.Lifecycle
 import com.example.simpleuvccamera.fragment.CameraInfoFragment
 import com.example.simpleuvccamera.log.MyLogcatSaver
@@ -34,16 +30,13 @@ import com.serenegiant.usb.UVCCamera
 import com.serenegiant.utils.FrameRateStat
 import com.tsinglink.android.library.YuvLib
 import com.tsinglink.android.library.freetype.TextDraw
-import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity(), IFrameCallback {
 
@@ -63,6 +56,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
     private var width = 1280
     private var height = 720
     private var formatIndex: Int = 0
+    private var deviceName:String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -157,6 +151,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
     }
 
     private fun openDevice(device: UsbDevice, ctrlBlock: USBMonitor.UsbControlBlock, createNew: Boolean) {
+        deviceName = device.deviceName
         val devices = mUSBMonitor?.deviceList?:ArrayList()
         if (devices.contains(device)) {
         } else {
@@ -196,6 +191,13 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
 
     private fun startPreview(camera: UVCCamera) {
         Timber.i("setPreviewSize with width:%d,height:%d,format:%d...",width,height,formatIndex)
+        val deviceName = this.deviceName
+        if (deviceName != "")
+        getPreferences(Context.MODE_PRIVATE).edit()
+            .putString("default-res-of${deviceName}","${width}x$height")
+            .putInt("default-fmt-of${deviceName}",formatIndex)
+            .apply()
+
         camera.setPreviewSize(width, height, formatIndex)
         glSurfaceView.setYuvDataSize(width, height)
         Timber.i("setFrameCallback ...")
@@ -215,6 +217,30 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
 
     private fun getDefaultWithHeightAndFormatFromCameraInfo(obj:JSONObject) {
         val formats = obj.getJSONArray("formats")
+        val preferences = getPreferences(Context.MODE_PRIVATE)
+        val res = preferences
+            .getString("default-res-of${deviceName}","")
+        val fmt1 = preferences
+            .getInt("default-fmt-of${deviceName}",0)
+        if (res != "" && fmt1 != 0){
+            for (i in 0 until formats.length()){
+                val fmt = formats[i] as JSONObject
+                val index = fmt.getInt("index")
+                val size = fmt.getJSONArray("size")
+                for (j in 0 until size.length()){
+                    val resolution = size[j] as String
+                    if (index == fmt1 && resolution == res){
+                        val splite = resolution.split("x")
+                        var w = splite[0].toInt()
+                        var h = splite[1].toInt()
+                        width = w
+                        height = h
+                        formatIndex = index
+                        return
+                    }
+                }
+            }
+        }
         if (formats.length() > 0){
             val fmt = formats[0] as JSONObject
             val index = fmt.getInt("index")

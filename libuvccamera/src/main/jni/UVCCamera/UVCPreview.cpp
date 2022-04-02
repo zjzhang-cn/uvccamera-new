@@ -496,7 +496,6 @@ void UVCPreview::do_preview(JNIEnv *env, uvc_stream_ctrl_t *ctrl) {
 				LOGE("failed to get_frame:%d",src_frame->data_bytes);
 				break;
 			}
-			LOGD("NV12ToI420...");
 			libyuv::NV12ToI420(
 				Y(src_frame->data), width,
 				U(src_frame->data), width,

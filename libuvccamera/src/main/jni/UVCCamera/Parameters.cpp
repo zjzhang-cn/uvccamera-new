@@ -28,6 +28,7 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 #include "libuvc/libuvc_internal.h"
+#include "libyuv.h"
 
 using namespace rapidjson;
 
@@ -361,11 +362,31 @@ char *UVCDiags::getSupportedSize(const uvc_device_handle_t *deviceHandle) {
 				char forcc_str[5] = {0};
 				DL_FOREACH(stream_if->format_descs, fmt_desc)
 				{
-					writer.StartObject();
-					{
-						switch (fmt_desc->bDescriptorSubtype) {
-						case UVC_VS_FORMAT_UNCOMPRESSED:
+					switch (fmt_desc->bDescriptorSubtype) {
+						case UVC_VS_FORMAT_UNCOMPRESSED:{
+							int frame_format = UVC_FRAME_FORMAT_UNKNOWN;
+							switch(FOURCC(fmt_desc->fourccFormat[0],fmt_desc->fourccFormat[1],fmt_desc->fourccFormat[2],fmt_desc->fourccFormat[3])){
+								case libyuv::FOURCC_NV12:
+								case libyuv::FOURCC_I420:
+									frame_format = UVC_FRAME_FORMAT_NV12;
+									break;
+								case libyuv::FOURCC_YUYV:
+								case libyuv::FOURCC_YUY2:
+									frame_format = UVC_FRAME_FORMAT_YUYV;
+									break;
+								case libyuv::FOURCC_UYVY:
+									frame_format = UVC_FRAME_FORMAT_UYVY;
+									break;
+								default:
+									frame_format = UVC_FRAME_FORMAT_UNKNOWN;
+									break;
+							}
+							if (UVC_FRAME_FORMAT_UNKNOWN == frame_format){
+								break;
+							}
+						}
 						case UVC_VS_FORMAT_MJPEG:
+							writer.StartObject();
 							write(writer, "index", fmt_desc->bFormatIndex);
 							write(writer, "type", fmt_desc->bDescriptorSubtype);
 							sprintf(forcc_str,"%4s", fmt_desc->fourccFormat);
@@ -380,12 +401,11 @@ char *UVCDiags::getSupportedSize(const uvc_device_handle_t *deviceHandle) {
 								writer.String(buf);
 							}
 							writer.EndArray();
+							writer.EndObject();
 							break;
 						default:
 							break;
-						}
 					}
-					writer.EndObject();
 				}
 			}
 			writer.EndArray();
