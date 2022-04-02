@@ -32,3 +32,7 @@ APP_ABI := armeabi-v7a arm64-v8a
 # APP_DEBUG := true
 # APP_STRIP_MODE := none
 # APP_OPTIM := release
+
+# APP_STL := c++_shared # Or system, or none.
+# APP_CFLAGS := -fsanitize=address -fno-omit-frame-pointer
+# APP_LDFLAGS := -fsanitize=address

@@ -65,18 +65,11 @@ private:
 	int frameWidth, frameHeight;
 	size_t frameBytes;
 	pthread_t preview_thread;
-	pthread_mutex_t preview_mutex;
-	pthread_cond_t preview_sync;
 	ObjectArray<uvc_frame_t *> previewFrames;
 	int previewFormat;
 	size_t previewBytes;
 //
-	volatile bool mIsCapturing;
-	ANativeWindow *mCaptureWindow;
-	pthread_t capture_thread;
-	pthread_mutex_t capture_mutex;
-	pthread_cond_t capture_sync;
-	uvc_frame_t *captureQueu;			// keep latest frame
+
 	jobject mFrameCallbackObj;
 	convFunc_t mFrameCallbackFunc;
 	Fields_iframecallback iframecallback_fields;
@@ -97,8 +90,7 @@ private:
 	void clearPreviewFrame();
 	static void *preview_thread_func(void *vptr_args);
 	int prepare_preview(uvc_stream_ctrl_t *ctrl);
-	void do_preview(uvc_stream_ctrl_t *ctrl);
-	uvc_frame_t *draw_preview_one(uvc_frame_t *frame, ANativeWindow **window, convFunc_t func, int pixelBytes);
+	void do_preview(JNIEnv *env, uvc_stream_ctrl_t *ctrl);
 //
 	void addCaptureFrame(uvc_frame_t *frame);
 	uvc_frame_t *waitCaptureFrame();
@@ -120,7 +112,6 @@ public:
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj);
 	int startPreview();
 	int stopPreview();
-	inline const bool isCapturing() const;
 	int setCaptureDisplay(ANativeWindow *capture_window);
 };
 

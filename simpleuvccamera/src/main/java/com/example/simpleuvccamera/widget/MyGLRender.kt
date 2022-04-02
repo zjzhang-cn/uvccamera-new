@@ -4,6 +4,7 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import android.util.Log
+import timber.log.Timber
 import java.nio.ByteBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -142,17 +143,17 @@ class MyGLRenderer : GLSurfaceView.Renderer {
      * @param height 高度
      */
     fun setYuvDataSize(width: Int, height: Int) {
-        if (width > 0 && height > 0) {
-            // 调整比例
-            createBuffers(width, height)
-
-            // 初始化容器
-            if (width != mVideoWidth && height != mVideoHeight) {
-                this.mVideoWidth = width
-                this.mVideoHeight = height
-                val yarraySize = width * height
-                val uvarraySize = yarraySize / 4
-                synchronized(this) {
+        synchronized(this) {
+            if (width > 0 && height > 0) {
+                // 初始化容器
+                if (width != mVideoWidth && height != mVideoHeight) {
+                    Timber.i("set video size from ${mVideoWidth}X$mVideoHeight  to ${width}X$height")
+                    // 调整比例
+                    createBuffers(width, height)
+                    this.mVideoWidth = width
+                    this.mVideoHeight = height
+                    val yarraySize = width * height
+                    val uvarraySize = yarraySize / 4
                     y = ByteBuffer.allocate(yarraySize)
                     u = ByteBuffer.allocate(uvarraySize)
                     v = ByteBuffer.allocate(uvarraySize)
@@ -215,6 +216,9 @@ class MyGLRenderer : GLSurfaceView.Renderer {
 
     fun feedData(buf:ByteBuffer){
         synchronized(this) {
+            if (mVideoWidth*mVideoHeight*3/2 != buf.capacity()){
+                Timber.w("buf capacity not equal to video size.capacity=${buf.capacity()}, video:${mVideoWidth}X${mVideoHeight}")
+            }
             if (hasVisibility) {
                 y.clear()
                 u.clear()

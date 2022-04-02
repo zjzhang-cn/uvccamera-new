@@ -6,6 +6,7 @@ import android.os.Process.myPid
 import android.widget.Toast
 import java.io.File
 import java.io.IOException
+import java.lang.IllegalStateException
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -19,7 +20,6 @@ class MyLogcatSaver {
             )}.txt")
 
             // create app folder
-
             // create app folder
             if (!logDirectory.exists()) {
                 val mkdirs = logDirectory.mkdirs()
@@ -33,7 +33,7 @@ class MyLogcatSaver {
 
             // clear the previous logcat and then write the new one to the file
             Runtime.getRuntime().exec("logcat -c")
-            process = Runtime.getRuntime().exec("logcat --pid ${myPid()} -f $logFile")
+            process = Runtime.getRuntime().exec("logcat -f $logFile")
         }catch (e:Throwable){
             Toast.makeText(context,"save log failed",Toast.LENGTH_LONG).show()
         }

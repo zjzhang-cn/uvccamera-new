@@ -166,10 +166,6 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
         if (!createNew){
             val camera = mUVCCamera
             if (camera != null){
-                runOnUiThread {
-                    glSurfaceView.setYuvDataSize(width, height)
-                    glSurfaceView.setDisplayOrientation(0)
-                }
                 Log.w(TAG,"resuse a device...");
                 startPreview(camera)
                 return
@@ -188,8 +184,6 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
             cameraInfo = JSONObject(jsonStr)
             getDefaultWithHeightAndFormatFromCameraInfo(cameraInfo)
             runOnUiThread {
-                glSurfaceView.setYuvDataSize(width, height)
-                glSurfaceView.setDisplayOrientation(0)
                 findViewById<View>(R.id.camera_group).visibility = View.VISIBLE
                 findViewById<View>(R.id.no_camera_group).visibility = View.GONE
             }
@@ -203,6 +197,7 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
     private fun startPreview(camera: UVCCamera) {
         Timber.i("setPreviewSize with width:%d,height:%d,format:%d...",width,height,formatIndex)
         camera.setPreviewSize(width, height, formatIndex)
+        glSurfaceView.setYuvDataSize(width, height)
         Timber.i("setFrameCallback ...")
         camera.setFrameCallback(this@MainActivity)
         Timber.i("startPreview ...")
@@ -350,8 +345,6 @@ class MainActivity : AppCompatActivity(), IFrameCallback {
                             stopPreview(camera)
                             startPreview(camera)
                         }
-                        glSurfaceView.setYuvDataSize(width, height)
-                        glSurfaceView.setDisplayOrientation(0)
                     }
                     CameraInfoFragment.newInstance(formats,width,height,formatIndex)
                         .show(supportFragmentManager,null)

@@ -71,7 +71,7 @@ String getNdkBuildPath() {
     }
     return ndkBuildPath
 }
-
+android.packagingOptions.jniLibs.useLegacyPackaging=true
 task ndkBuild(type: Exec, description: 'Compile JNI source via NDK') {
     println('executing ndkBuild')
     def ndkBuildPath = getNdkBuildPath();

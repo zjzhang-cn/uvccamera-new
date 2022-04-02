@@ -2726,6 +2726,10 @@ static int handle_iso_completion(struct libusb_device_handle *handle,	// XXX add
 
 	usbi_mutex_lock(&itransfer->lock);
 	for (i = 0; i < num_urbs; i++) {
+	    if (tpriv->iso_urbs == NULL){
+	        usbi_err(TRANSFER_CTX(transfer), "tpriv->iso_urbs null!");
+            break;
+        }
 		if (urb == tpriv->iso_urbs[i]) {
 			urb_idx = i + 1;
 			break;

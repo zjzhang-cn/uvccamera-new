@@ -776,17 +776,32 @@ void _uvc_process_payload(uvc_stream_handle_t *strmh, uint8_t *payload, size_t p
     if (header_len > variable_offset)
     {
         // Metadata is attached to header
+        // UVC_DEBUG("memcpy 1");
+        // LIBUVC_XFER_META_BUF_SIZE
+        if (strmh->meta_got_bytes + header_len - variable_offset > LIBUVC_XFER_META_BUF_SIZE){
+          UVC_DEBUG("memcpy will crash....meta_got_bytes=%d,meta_len=%d,SIZE=%d"
+            ,strmh->meta_got_bytes,header_len - variable_offset,LIBUVC_XFER_META_BUF_SIZE);
+        }
         memcpy(strmh->meta_outbuf + strmh->meta_got_bytes, payload + variable_offset, header_len - variable_offset);
         strmh->meta_got_bytes += header_len - variable_offset;
     }
   }
 
   if (data_len > 0) {
+    if (strmh->got_bytes + data_len > strmh->buf_size){
+          UVC_DEBUG("memcpy will crash....got_bytes=%d,data_len=%d,buf_size=%d"
+            ,strmh->got_bytes,data_len, strmh->buf_size);
+    }
     memcpy(strmh->outbuf + strmh->got_bytes, payload + header_len, data_len);
     strmh->got_bytes += data_len;
 
     if (header_info & (1 << 1)) {
       /* The EOF bit is set, so publish the complete frame */
+      // FILE * meta = fopen("/sdcard/Download/simpleuvccamera/meta","wb");
+      // if(meta){
+      //   fwrite(strmh->meta_outbuf,1,strmh->meta_got_bytes,meta);
+      //   fclose(meta);
+      // }
       _uvc_swap_buffers(strmh);
     }
   }
@@ -1025,6 +1040,7 @@ uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh, uvc_stream_handle_t 
     ret = UVC_ERROR_NO_MEM;
     goto fail;
   }
+  memset(strmh,0,sizeof(*strmh));
   strmh->devh = devh;
   strmh->stream_if = stream_if;
   strmh->frame.library_owns_data = 1;
@@ -1041,10 +1057,26 @@ uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh, uvc_stream_handle_t 
   strmh->running = 0;
 
   strmh->outbuf = malloc( ctrl->dwMaxVideoFrameSize );
+  if (!strmh->outbuf){
+    ret = UVC_ERROR_NO_MEM;
+    goto fail;
+  }
   strmh->holdbuf = malloc( ctrl->dwMaxVideoFrameSize );
-
+  if (!strmh->holdbuf){
+    ret = UVC_ERROR_NO_MEM;
+    goto fail;
+  }
+  strmh->buf_size = ctrl->dwMaxVideoFrameSize;
   strmh->meta_outbuf = malloc( LIBUVC_XFER_META_BUF_SIZE );
+  if (!strmh->meta_outbuf){
+    ret = UVC_ERROR_NO_MEM;
+    goto fail;
+  }
   strmh->meta_holdbuf = malloc( LIBUVC_XFER_META_BUF_SIZE );
+  if (!strmh->meta_holdbuf){
+    ret = UVC_ERROR_NO_MEM;
+    goto fail;
+  }
    
   pthread_mutex_init(&strmh->cb_mutex, NULL);
   pthread_cond_init(&strmh->cb_cond, NULL);
@@ -1057,8 +1089,22 @@ uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh, uvc_stream_handle_t 
   return UVC_SUCCESS;
 
 fail:
-  if(strmh)
+  if(strmh){
+    if (strmh->outbuf){
+      free(strmh->outbuf);
+    }
+    if (strmh->holdbuf){
+      free(strmh->holdbuf);
+    }
+    if (strmh->meta_outbuf){
+      free(strmh->meta_outbuf);
+    }
+    if (strmh->meta_holdbuf){
+      free(strmh->meta_holdbuf);
+    }
     free(strmh);
+  }
+    
   UVC_EXIT(ret);
   return ret;
 }
@@ -1479,6 +1525,7 @@ uvc_error_t uvc_stream_get_frame(uvc_stream_handle_t *strmh,
  * @param devh UVC device
  */
 void uvc_stop_streaming(uvc_device_handle_t *devh) {
+  UVC_ENTER();
   uvc_stream_handle_t *strmh, *strmh_tmp;
 
   DL_FOREACH_SAFE(devh->streams, strmh, strmh_tmp) {
@@ -1547,23 +1594,36 @@ uvc_error_t uvc_stream_stop(uvc_stream_handle_t *strmh) {
  * @param strmh UVC stream handle
  */
 void uvc_stream_close(uvc_stream_handle_t *strmh) {
-  if (strmh->running)
+  UVC_ENTER();
+  UVC_DEBUG("closing %p\n",strmh);
+  if (strmh->running){
+    UVC_DEBUG("uvc_stream_stop %p\n",strmh);
     uvc_stream_stop(strmh);
-
+  }
+  UVC_DEBUG("uvc_release_if %p,%d\n",strmh->devh, strmh->stream_if->bInterfaceNumber);
   uvc_release_if(strmh->devh, strmh->stream_if->bInterfaceNumber);
 
-  if (strmh->frame.data)
+  if (strmh->frame.data){
+    UVC_DEBUG("free frame.data %p\n", strmh->frame.data);
     free(strmh->frame.data);
-
+  }
+  UVC_DEBUG("free outbuf %p\n", strmh->outbuf);
   free(strmh->outbuf);
+  UVC_DEBUG("free holdbuf %p\n", strmh->holdbuf);
   free(strmh->holdbuf);
 
+  UVC_DEBUG("free meta_outbuf %p\n", strmh->meta_outbuf);
   free(strmh->meta_outbuf);
+  UVC_DEBUG("free meta_holdbuf %p\n", strmh->meta_holdbuf);
   free(strmh->meta_holdbuf);
 
+  UVC_DEBUG("pthread_cond_destroy %p\n", &strmh->cb_cond);
   pthread_cond_destroy(&strmh->cb_cond);
+  UVC_DEBUG("pthread_mutex_destroy %p\n", &strmh->cb_mutex);
   pthread_mutex_destroy(&strmh->cb_mutex);
 
+  UVC_DEBUG("DL_DELETE %p,%p\n", strmh->devh->streams, strmh);
   DL_DELETE(strmh->devh->streams, strmh);
+  UVC_DEBUG("free strmh %p\n", strmh);
   free(strmh);
 }

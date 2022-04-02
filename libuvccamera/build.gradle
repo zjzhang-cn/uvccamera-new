@@ -144,7 +144,7 @@ afterEvaluate {
 //    classifier = 'javadoc'
 //    from javadoc.destinationDir
 //}
-
+android.packagingOptions.jniLibs.useLegacyPackaging=true
 repositories {
     mavenCentral()
 }

@@ -231,7 +231,7 @@ typedef struct uvc_device_info {
 #endif
 #endif
 
-#define LIBUVC_XFER_META_BUF_SIZE ( 4 * 1024 )
+#define LIBUVC_XFER_META_BUF_SIZE ( 8 * 1024 )
 
 struct uvc_stream_handle {
   struct uvc_device_handle *devh;
@@ -251,6 +251,7 @@ struct uvc_stream_handle {
   uint32_t last_scr, hold_last_scr;
   size_t got_bytes, hold_bytes;
   uint8_t *outbuf, *holdbuf;
+  uint32_t buf_size;
   pthread_mutex_t cb_mutex;
   pthread_cond_t cb_cond;
   pthread_t cb_thread;
